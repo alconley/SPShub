@@ -67,7 +67,7 @@ We use [Trunk](https://trunkrs.dev/) to build for web target.
 >
 > If `gh-pages` is not available in `Source`, just create and push a branch called `gh-pages` and it should be available.
 
-You can test the template app at <https://emilk.github.io/eframe_template/>.
+You can test the app at <https://alconley.github.io/sps_cebra/>.
 
 ## Updating egui
 
