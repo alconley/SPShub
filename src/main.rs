@@ -37,7 +37,7 @@ fn main() {
             .start(
                 "the_canvas_id", // hardcode it
                 web_options,
-                Box::new(|cc| Box::new(SPS_CeBrA::TemplateApp::new(cc))),
+                Box::new(|cc| Box::new(sps_cebra::TemplateApp::new(cc))),
             )
             .await
             .expect("failed to start eframe");
