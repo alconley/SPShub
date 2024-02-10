@@ -5,7 +5,7 @@ use crate::eventbuilder::app::EVBApp;
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct TemplateApp {
     // Example stuff:
-    #[serde(skip)]
+    // #[serde(skip)]
     evb_app: EVBApp,
 }
 
@@ -79,7 +79,7 @@ impl eframe::App for TemplateApp {
                 egui::warn_if_debug_build(ui);
             });
 
-        self.evb_app.update(ctx, frame)
+            self.evb_app.update(ctx, frame)
 
         });
 

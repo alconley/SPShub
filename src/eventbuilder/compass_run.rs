@@ -105,7 +105,7 @@ fn process_run(params: RunParams<'_>, k_params: &KineParameters, progress: Arc<M
 
     let mut count: u64 = 0;
     let mut flush_count: u64 = 0;
-    let flush_percent = 0.1;
+    let flush_percent = 0.01;
     let flush_val: u64 = ((total_count as f64) * flush_percent) as u64;
 
     let mut frag_number = 0;

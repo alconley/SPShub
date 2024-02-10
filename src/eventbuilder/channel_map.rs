@@ -6,6 +6,7 @@ use std::path::Path;
 use std::num::ParseIntError;
 use strum::IntoEnumIterator;
 use strum_macros::{AsRefStr, EnumIter};
+use serde::{Serialize, Deserialize};
 
 use super::compass_data::generate_board_channel_uuid;
 
@@ -13,7 +14,7 @@ const INVALID_LOCAL_DET_ID: i32 = -1;
 const INVALID_LOCAL_CHANNEL: i32 = -1;
 
 //Channels to be mapped in the ChannelMap, each variant is the verbatim keyword in the channel map
-#[derive(Debug, Clone, PartialEq, AsRefStr, EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, AsRefStr, EnumIter, Serialize, Deserialize)]
 pub enum SPSChannelType {
     //Detector fields -> can be channel mapped
     AnodeFront,
