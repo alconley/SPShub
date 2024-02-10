@@ -75,7 +75,9 @@ pub struct MassMap {
 
 impl MassMap {
     pub fn new() -> Result<Self, MassError> {
-        let mut map = MassMap { map: HashMap::new(), file: PathBuf::from(std::env::current_dir()?.join("etc").join("amdc_2016.txt")) };
+        // let mut map = MassMap { map: HashMap::new(), file: PathBuf::from(std::env::current_dir()?.join("etc").join("amdc_2016.txt")) };
+        let mut map = MassMap { map: HashMap::new(), file: PathBuf::from("etc/amdc_2016.txt") };
+
         map.init()?;
         return Ok(map);
     }

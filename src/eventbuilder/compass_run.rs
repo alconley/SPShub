@@ -8,9 +8,9 @@ use tar::Archive;
 use log::info;
 
 use super::used_size::UsedSize;
-use super::channel_map::ChannelMap;
-use super::scaler_list::ScalerList;
-use super::shift_map::ShiftMap;
+use super::channel_map::{ChannelMap, Board};
+use super::scaler_list::{ScalerEntryUI, ScalerList};
+use super::shift_map::{ShiftMap, ShiftMapEntry};
 use super::compass_file::CompassFile;
 use super::event_builder::EventBuilder;
 use super::sps_data::SPSData;
@@ -26,7 +26,7 @@ struct RunParams<'a> {
     pub run_archive_path: PathBuf,
     pub unpack_dir_path: PathBuf,
     pub output_file_path: PathBuf,
-    pub scalerlist_file_path: Option<PathBuf>,
+    pub scalerlist: Vec<ScalerEntryUI>,
     pub scalerout_file_path: PathBuf,
     pub nuc_map: &'a MassMap,
     pub channel_map: &'a ChannelMap,
@@ -72,10 +72,7 @@ fn process_run(params: RunParams<'_>, k_params: &KineParameters, progress: Arc<M
     let mut decompressed_archive = Archive::new(GzDecoder::new(archive_file));
     decompressed_archive.unpack(&params.unpack_dir_path)?;
 
-    let mut scaler_list = match &params.scalerlist_file_path {
-        Some(path) => Some(ScalerList::new(path)?),
-        None => None
-    };
+    let mut scaler_list = Some(ScalerList::new(params.scalerlist));
 
     //Collect all files from unpack, separate scalers from normal files
     let mut files: Vec<CompassFile<'_>> = vec![];
@@ -188,9 +185,9 @@ pub struct ProcessParams {
     pub archive_dir: PathBuf,
     pub unpack_dir: PathBuf,
     pub output_dir: PathBuf,
-    pub channel_map_filepath: PathBuf,
-    pub scaler_list_filepath: Option<PathBuf>,
-    pub shift_map_filepath: Option<PathBuf>,
+    pub channel_map: Vec<Board>,
+    pub scaler_list: Vec<ScalerEntryUI>,
+    pub shift_map: Vec<ShiftMapEntry>,
     pub coincidence_window: f64,
     pub run_min: i32,
     pub run_max: i32
@@ -198,22 +195,21 @@ pub struct ProcessParams {
 
 //Function which handles processing multiple runs, this is what the UI actually calls
 pub fn process_runs(params: ProcessParams, k_params: KineParameters, progress: Arc<Mutex<f32>>) -> Result<(), EVBError> {
-    let channel_map = ChannelMap::new(&params.channel_map_filepath)?;
+    let channel_map = ChannelMap::new(&params.channel_map);
     let mass_map = MassMap::new()?;
-    let shift_map = match params.shift_map_filepath {
-        Some(path) => Some(ShiftMap::new(&path)?),
-        None => None
-    };
+    let shift_map = ShiftMap::new(params.shift_map);
+
     for run in params.run_min..params.run_max {
         let local_params =  RunParams {
             run_archive_path: params.archive_dir.join(format!("run_{}.tar.gz", run)),
             unpack_dir_path: params.unpack_dir.clone(),
             output_file_path: params.output_dir.join(format!("run_{}.parquet", run)),
-            scalerlist_file_path: params.scaler_list_filepath.clone(),
+            // scalerlist_file_path: params.scaler_list_filepath.clone(),
+            scalerlist: params.scaler_list.clone(),
             scalerout_file_path: params.output_dir.join(format!("run_{}_scalers.txt", run)),
             nuc_map: &mass_map,
             channel_map: &channel_map,
-            shift_map: &shift_map,
+            shift_map: &Some(shift_map.clone()),
             coincidence_window: params.coincidence_window.clone(),
             run_number: run.clone()
         };

@@ -1,12 +1,19 @@
 use std::fs::File;
 use std::path::Path;
-use std::io::{BufReader, BufRead, BufWriter, Write};
+use std::io::{BufWriter, Write};
 
 use super::compass_file::CompassFile;
 
 const INVALID_SCALER_PATTERN: &str = "InvalidScalerPattern";
 const INVALID_SCALER_NAME: &str = "InvalidScaler";
 const INVALID_SCALER_VALUE: u64 = 0;
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScalerEntryUI {
+    pub file_pattern: String,
+    pub scaler_name: String,
+}
 
 #[derive(Debug, Clone)]
 struct Scaler {
@@ -27,30 +34,17 @@ pub struct ScalerList {
 }
 
 impl ScalerList {
-    pub fn new(filename: &Path) -> Result<ScalerList, std::io::Error> {
-        let file = File::open(filename)?;
-        let mut reader = BufReader::new(file);
-        let mut junk = String::new();
-        let mut scalers = ScalerList {
-            list: Vec::new()
-        };
+    // Adjusted to take a vector of ScalerEntryUI
+    pub fn new(entries: Vec<ScalerEntryUI>) -> ScalerList {
+        let scalers = entries.into_iter().map(|entry| {
+            Scaler {
+                file_pattern: entry.file_pattern,
+                name: entry.scaler_name,
+                value: 0, // Assuming initial value is always 0
+            }
+        }).collect();
 
-        reader.read_line(&mut junk)?;
-        for line in reader.lines() {
-            match line {
-                Ok(line_str) => {
-                    let entries: Vec<&str> = line_str.split_whitespace().collect();
-                    scalers.list.push(Scaler {
-                        file_pattern: String::from(entries[0]),
-                        name: String::from(entries[1]),
-                        value: 0
-                    });
-                }
-                Err(x) => return Err(x)
-            };
-        }
-
-        Ok(scalers)
+        ScalerList { list: scalers }
     }
 
     //Check if file is a scaler, read counts if yes

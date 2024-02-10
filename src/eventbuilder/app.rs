@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
-use std::path::{PathBuf, Path};
+use std::path::Path;
 use std::fs::File;
 use std::io::Write;
 
@@ -11,6 +11,9 @@ use eframe::egui::{self, RichText, Color32};
 use eframe::App;
 
 use super::compass_run::{process_runs, ProcessParams};
+use super::channel_map::{Board, ChannelType};
+use super::shift_map::ShiftMapEntry;
+use super::scaler_list::ScalerEntryUI;
 use super::error::EVBError;
 use super::nuclear_data::MassMap;
 use super::kinematics::KineParameters;
@@ -19,28 +22,45 @@ use super::ws::{Workspace, WorkspaceError};
 #[derive(Debug, Serialize, Deserialize)]
 struct EvbAppParams {
     pub workspace: Option<Workspace>,
-    pub channel_map: Option<PathBuf>,
-    pub scaler_list: Option<PathBuf>,
-    pub shift_map: Option<PathBuf>,
     pub kinematics: KineParameters,
     pub coincidence_window: f64,
     pub run_min: i32,
-    pub run_max: i32
+    pub run_max: i32,
+    pub channel_map_entries: Vec<Board>,
+    pub shift_map_entries: Vec<ShiftMapEntry>,
+    pub scaler_list_entries: Vec<ScalerEntryUI>,
 }
 
 impl Default for EvbAppParams {
     fn default() -> Self {
         EvbAppParams { 
             workspace: None, 
-            channel_map: None, 
-            scaler_list: None, 
-            shift_map: None, 
             kinematics: KineParameters::default(), 
             coincidence_window: 3.0e3, 
             run_min: 0, 
-            run_max: 0 }
+            run_max: 0,
+            channel_map_entries: Vec::new(),
+            shift_map_entries: Vec::new(),
+            scaler_list_entries: Vec::new(),
+         }
     }
 }
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+enum ActiveTab {
+    MainTab,
+    Kinematics,
+    ChannelMap,
+    ShiftMap,
+    ScalerList,
+}
+
+impl Default for ActiveTab {
+    fn default() -> Self {
+        Self::MainTab
+    }
+}
+
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[derive(Debug, Default)]
@@ -50,12 +70,14 @@ pub struct EVBApp {
 
     parameters: EvbAppParams,
     rxn_eqn: String,
+    active_tab: ActiveTab,
 
     #[serde(skip)]
     mass_map: MassMap,
     
     #[serde(skip)]
     thread_handle: Option<JoinHandle<Result<(), EVBError>>>,
+
 
 }
 
@@ -64,6 +86,7 @@ impl EVBApp {
         EVBApp {
             progress: Arc::new(Mutex::new(0.0)),
             parameters: EvbAppParams::default(),
+            active_tab: ActiveTab::MainTab,
             rxn_eqn: String::from("None"),
             mass_map: MassMap::new().expect("Could not open amdc data, shutting down!"),
             thread_handle: None,
@@ -72,15 +95,15 @@ impl EVBApp {
 
     fn check_and_startup_processing_thread(&mut self) -> Result<(), WorkspaceError> {
         if self.thread_handle.is_none() && self.parameters.workspace.is_some() 
-           && self.parameters.channel_map.is_some() && self.parameters.scaler_list.is_some() {
+        && !self.parameters.channel_map_entries.is_empty() {
             let prog = self.progress.clone();
             let r_params = ProcessParams {
                 archive_dir: self.parameters.workspace.as_ref().unwrap().get_archive_dir()?,
                 unpack_dir: self.parameters.workspace.as_ref().unwrap().get_unpack_dir()?,
                 output_dir: self.parameters.workspace.as_ref().unwrap().get_output_dir()?,
-                channel_map_filepath: self.parameters.channel_map.as_ref().unwrap().clone(),
-                scaler_list_filepath: self.parameters.scaler_list.clone(),
-                shift_map_filepath: self.parameters.shift_map.clone(),
+                channel_map: self.parameters.channel_map_entries.clone(),
+                scaler_list: self.parameters.scaler_list_entries.clone(),
+                shift_map: self.parameters.shift_map_entries.clone(),
                 coincidence_window: self.parameters.coincidence_window,
                 run_min: self.parameters.run_min,
                 run_max: self.parameters.run_max + 1, //Make it [run_min, run_max]
@@ -145,13 +168,268 @@ impl EVBApp {
         };
     }
 
+    fn channel_map_ui(&mut self, ui: &mut egui::Ui) {
+        ui.label(RichText::new("Channel Map").color(Color32::LIGHT_BLUE).size(18.0));
+        
+        if ui.button("Add Board").clicked() {
+            self.parameters.channel_map_entries.push(Board::default()); // This line seems correct, assuming boards is a Vec<Board>
+        }
+
+        // Use a DragValue to adjust the desired number of boards
+        ui.horizontal(|ui| {
+            ui.label("Number of Boards:");
+            let mut desired_board_count = self.parameters.channel_map_entries.len();
+            if ui.add(egui::DragValue::new(&mut desired_board_count).clamp_range(0..=16)).changed() {
+                self.parameters.channel_map_entries.resize_with(desired_board_count, Board::default);
+            }
+        });
+
+        // Use a horizontal scroll area to contain all the boards
+        egui::ScrollArea::both().show(ui, |ui| {
+            ui.horizontal(|ui| {
+                for (board_idx, board) in self.parameters.channel_map_entries.iter_mut().enumerate() {
+                    ui.vertical(|ui| {
+                        ui.group(|ui| {
+                            ui.label(format!("Board {}", board_idx));
+                            ui.label("Channel Number");
+                            egui::Grid::new(format!("board_{}", board_idx)).num_columns(2).spacing([20.0, 4.0]).show(ui, |ui| {
+                                for (channel_idx, channel_type) in board.channels.iter_mut().enumerate() {
+                                    ui.label(format!("{}", channel_idx));
+                                    egui::ComboBox::from_id_source(format!("channel_type_{}_{}", board_idx, channel_idx))
+                                        .selected_text(format!("{:?}", channel_type))
+                                        .show_ui(ui, |ui| {
+                                            // Populate ComboBox with channel types
+
+                                            ui.selectable_value(channel_type, ChannelType::AnodeFront, "AnodeFront");
+                                            ui.selectable_value(channel_type, ChannelType::AnodeBack, "AnodeBack");
+                                            ui.selectable_value(channel_type, ChannelType::ScintLeft, "ScintLeft");
+                                            ui.selectable_value(channel_type, ChannelType::ScintRight, "ScintRight");
+                                            ui.selectable_value(channel_type, ChannelType::Cathode, "Cathode");
+                                            ui.selectable_value(channel_type, ChannelType::DelayFrontLeft, "DelayFrontLeft");
+                                            ui.selectable_value(channel_type, ChannelType::DelayFrontRight, "DelayFrontRight");
+                                            ui.selectable_value(channel_type, ChannelType::DelayBackLeft, "DelayBackLeft");
+                                            ui.selectable_value(channel_type, ChannelType::DelayBackRight, "DelayBackRight");
+                                            ui.selectable_value(channel_type, ChannelType::Cebra0, "Cebra0");
+                                            ui.selectable_value(channel_type, ChannelType::Cebra1, "Cebra1");
+                                            ui.selectable_value(channel_type, ChannelType::Cebra2, "Cebra2");
+                                            ui.selectable_value(channel_type, ChannelType::Cebra3, "Cebra3");
+                                            ui.selectable_value(channel_type, ChannelType::Cebra4, "Cebra4");
+                                            ui.selectable_value(channel_type, ChannelType::Cebra5, "Cebra5");
+                                            ui.selectable_value(channel_type, ChannelType::Cebra6, "Cebra6");
+                                            ui.selectable_value(channel_type, ChannelType::None, "None");
+
+
+
+                                        });
+                                    ui.end_row();
+                                }
+                            });
+                        });
+                    });
+                    ui.add_space(20.0); // Add space between boards
+                }
+            });
+        });
+    }
+
+    fn shift_map_ui(&mut self, ui: &mut egui::Ui) {
+        ui.label(RichText::new("Time Shift Map").color(Color32::LIGHT_BLUE).size(18.0));
+
+        // Assuming `self.shift_map_entries` is a Vec<ShiftMapEntry>
+        if ui.button("Add Entry").clicked() {
+            // Add a new entry with default values
+            self.parameters.shift_map_entries.push(ShiftMapEntry {
+                board_number: 0,
+                channel_number: 0,
+                time_shift: 0.0,
+            });
+        }
+
+        // Iterate over each entry with its index
+        let mut to_remove = Vec::new(); // Collect indices of entries to remove
+        for (index, entry) in self.parameters.shift_map_entries.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                // Allow the user to input board number, channel number, and time shift
+                ui.label("Board:");
+                ui.add(egui::DragValue::new(&mut entry.board_number));
+                ui.label("Channel:");
+                ui.add(egui::DragValue::new(&mut entry.channel_number));
+                ui.label("Time Shift:");
+                ui.add(egui::DragValue::new(&mut entry.time_shift).suffix(" ns"));
+
+                // Button to remove the current entry
+                if ui.button("❌").clicked() {
+                    to_remove.push(index);
+                }
+            });
+        }
+
+        // Remove entries marked for removal
+        // Iterate in reverse to ensure indices remain valid after removals
+        for &index in to_remove.iter().rev() {
+            self.parameters.shift_map_entries.remove(index);
+        }
+    }
+ 
+    fn scaler_list_ui(&mut self, ui: &mut egui::Ui) {
+
+        ui.label(RichText::new("Scalar List").color(Color32::LIGHT_BLUE).size(18.0));
+        
+        if ui.button("Add Scaler Entry").clicked() {
+            // Add a new entry with default values
+            self.parameters.scaler_list_entries.push(ScalerEntryUI {
+                file_pattern: "".to_string(),
+                scaler_name: "".to_string(),
+            });
+        }
+
+        // Use a `ScrollArea` to ensure the UI can handle many entries
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            let mut to_remove = Vec::new(); // Indices of entries to remove
+            for (index, entry) in self.parameters.scaler_list_entries.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    ui.label("File Pattern:");
+                    ui.text_edit_singleline(&mut entry.file_pattern);
+                    ui.label("Scaler Name:");
+                    ui.text_edit_singleline(&mut entry.scaler_name);
+
+                    // Button to remove the current entry
+                    if ui.button("❌").clicked() {
+                        to_remove.push(index);
+                    }
+                });
+            }
+
+            // Remove entries marked for removal, in reverse order to maintain correct indices
+            for &index in to_remove.iter().rev() {
+                self.parameters.scaler_list_entries.remove(index);
+            }
+        });
+    }
+
+    fn kinematics_ui(&mut self, ui: &mut egui::Ui) {
+
+        ui.label(RichText::new("Kinematics").color(Color32::LIGHT_BLUE).size(18.0));
+
+        egui::Grid::new("KineGrid").show(ui,|ui| {
+            ui.label("Target Z     ");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.target_z).speed(1));
+            ui.label("Target A     ");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.target_a).speed(1));
+            ui.end_row();
+
+            ui.label("Projectile Z");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.projectile_z).speed(1));
+            ui.label("Projectile A");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.projectile_a).speed(1));
+            ui.end_row();
+
+            ui.label("Ejectile Z   ");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.ejectile_z).speed(1));
+            ui.label("Ejectile A   ");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.ejectile_a).speed(1));
+            ui.end_row();
+
+            ui.label("Magnetic Field(kG)");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.b_field).speed(10.0));
+            ui.label("SPS Angle(deg)");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.sps_angle).speed(1.0));
+            ui.label("Projectile KE(MeV)");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.projectile_ke).speed(0.01));
+            ui.end_row();
+
+            ui.label("Reaction Equation");
+            ui.label(&self.rxn_eqn);
+            if ui.button("Set Kinematics").clicked() {
+                self.rxn_eqn = self.parameters.kinematics.generate_rxn_eqn(&self.mass_map);
+            }
+        });
+
+    }
+
+    fn main_tab_ui(&mut self, ui: &mut egui::Ui) {
+        //Files/Workspace
+        ui.separator();
+        ui.label(RichText::new("Run Information").color(Color32::LIGHT_BLUE).size(18.0));
+        egui::Grid::new("RunGrid").show(ui,|ui| {
+            ui.label("Workspace: ");
+            ui.label(match &self.parameters.workspace {
+                Some(ws) => ws.get_parent_str(),
+                None => "None"
+            });
+            if ui.button("Open").clicked() {
+                let result = native_dialog::FileDialog::new()
+                            .set_location(&std::env::current_dir().expect("Couldn't access runtime directory"))
+                            .show_open_single_dir();
+                match result {
+                    Ok(path) => match path {
+                        Some(real_path) => self.parameters.workspace = match Workspace::new(&real_path) {
+                            Ok(ws) => Some(ws),
+                            Err(e) => {
+                                error!("Error creating workspace: {}", e);
+                                None
+                            }
+                        },
+                        None => ()
+                    }
+                    Err(_) => error!("File dialog error!")
+                }
+            }
+            ui.end_row();
+
+            ui.label("Coincidence Window (ns)");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.coincidence_window).speed(100).custom_formatter(|n, _| {
+                format!("{:e}", n)
+            }));
+            ui.end_row();
+
+            ui.label("Run Min");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.run_min).speed(1));
+            ui.end_row();
+
+            ui.label("Run Max");
+            ui.add(egui::widgets::DragValue::new(&mut self.parameters.run_max).speed(1));
+
+        });
+
+    }
+
+    fn ui_tabs(&mut self, ui: &mut egui::Ui) {
+        egui::TopBottomPanel::top("top_panel").show_inside(ui, |ui| {
+            ui.horizontal(|ui| {
+                if ui.selectable_label(matches!(self.active_tab, ActiveTab::MainTab), "Eventbuilder").clicked() {
+                    self.active_tab = ActiveTab::MainTab;
+                }
+                if ui.selectable_label(matches!(self.active_tab, ActiveTab::Kinematics), "Kinematics").clicked() {
+                    self.active_tab = ActiveTab::Kinematics;
+                }
+                if ui.selectable_label(matches!(self.active_tab, ActiveTab::ChannelMap), "Channel Map").clicked() {
+                    self.active_tab = ActiveTab::ChannelMap;
+                }
+                if ui.selectable_label(matches!(self.active_tab, ActiveTab::ShiftMap), "Shift Map").clicked() {
+                    self.active_tab = ActiveTab::ShiftMap;
+                }
+                if ui.selectable_label(matches!(self.active_tab, ActiveTab::ScalerList), "Scaler List").clicked() {
+                    self.active_tab = ActiveTab::ScalerList;
+                }
+            });
+        });
+
+        match self.active_tab {
+            ActiveTab::MainTab => self.main_tab_ui(ui),
+            ActiveTab::Kinematics => self.kinematics_ui(ui),
+            ActiveTab::ChannelMap => self.channel_map_ui(ui),
+            ActiveTab::ShiftMap => self.shift_map_ui(ui),
+            ActiveTab::ScalerList => self.scaler_list_ui(ui),
+        }
+    }
+
 }
 
 impl App for EVBApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         egui::Window::new("SE-SPS + CeBrA Event Builder").show(ctx, |ui| {
 
-            //Menus
             ui.menu_button("File", |ui| {
                 if ui.button("Open Config...").clicked() {
                     let result = native_dialog::FileDialog::new()
@@ -180,149 +458,11 @@ impl App for EVBApp {
                     }
                 }
             });
-
-            // //Files/Workspace
+        
             ui.separator();
-            ui.label(RichText::new("Run Information").color(Color32::LIGHT_BLUE).size(18.0));
-            egui::Grid::new("RunGrid").show(ui,|ui| {
-                ui.label("Workspace: ");
-                ui.label(match &self.parameters.workspace {
-                    Some(ws) => ws.get_parent_str(),
-                    None => "None"
-                });
-                if ui.button("Open").clicked() {
-                    let result = native_dialog::FileDialog::new()
-                                .set_location(&std::env::current_dir().expect("Couldn't access runtime directory"))
-                                .show_open_single_dir();
-                    match result {
-                        Ok(path) => match path {
-                            Some(real_path) => self.parameters.workspace = match Workspace::new(&real_path) {
-                                Ok(ws) => Some(ws),
-                                Err(e) => {
-                                    error!("Error creating workspace: {}", e);
-                                    None
-                                }
-                            },
-                            None => ()
-                        }
-                        Err(_) => error!("File dialog error!")
-                    }
-                }
-                ui.end_row();
-
-                ui.label("Channel Map: ");
-                ui.label(match &self.parameters.channel_map {
-                    Some(real_path) => real_path.as_path().to_str().expect("Cannot display channel map!"),
-                    None => "None"
-                });
-                if ui.button("Open").clicked() {
-                    let result = native_dialog::FileDialog::new()
-                                .set_location(&std::env::current_dir().expect("Couldn't access runtime directory"))
-                                .add_filter("Text File", &["txt"])
-                                .show_open_single_file();
-                    match result {
-                        Ok(path) => match path {
-                            Some(real_path) => self.parameters.channel_map = Some(real_path),
-                            None => ()
-                        }
-                        Err(_) => error!("File dialog error!")
-                    }
-                }
-                ui.end_row();
-
-                ui.label("Scaler List: ");
-                ui.label(match &self.parameters.scaler_list {
-                    Some(real_path) => real_path.as_path().to_str().expect("Cannot display scaler list!"),
-                    None => "None"
-                });
-                if ui.button("Open").clicked() {
-                    let result = native_dialog::FileDialog::new()
-                                .set_location(&std::env::current_dir().expect("Couldn't access runtime directory"))
-                                .add_filter("Text File", &["txt"])
-                                .show_open_single_file();
-                    match result {
-                        Ok(path) => match path {
-                            Some(real_path) => self.parameters.scaler_list = Some(real_path),
-                            None => ()
-                        }
-                        Err(_) => error!("File dialog error!")
-                    }
-                }
-                ui.end_row();
-
-                ui.label("Shift Map: ");
-                ui.label(match &self.parameters.shift_map {
-                    Some(real_path) => real_path.as_path().to_str().expect("Cannot display shift map!"),
-                    None => "None"
-                });
-                if ui.button("Open").clicked() {
-                    let result = native_dialog::FileDialog::new()
-                                .set_location(&std::env::current_dir().expect("Couldn't access runtime directory"))
-                                .add_filter("Text File", &["txt"])
-                                .show_open_single_file();
-                    match result {
-                        Ok(path) => match path {
-                            Some(real_path) => self.parameters.shift_map = Some(real_path),
-                            None => ()
-                        }
-                        Err(_) => error!("File dialog error!")
-                    }
-                }
-                ui.end_row();
-
-
-                ui.label("Coincidence Window (ns)");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.coincidence_window).speed(100).custom_formatter(|n, _| {
-                    format!("{:e}", n)
-                }));
-                ui.end_row();
-
-                ui.label("Run Min");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.run_min).speed(1));
-                ui.end_row();
-
-                ui.label("Run Max");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.run_max).speed(1));
-            });
-
-            //Kinematics elements
+                self.ui_tabs(ui);
             ui.separator();
-            ui.label(RichText::new("Kinematics").color(Color32::LIGHT_BLUE).size(18.0));
-            egui::Grid::new("KineGrid").show(ui,|ui| {
-                ui.label("Target Z     ");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.target_z).speed(1));
-                ui.label("Target A     ");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.target_a).speed(1));
-                ui.end_row();
 
-                ui.label("Projectile Z");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.projectile_z).speed(1));
-                ui.label("Projectile A");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.projectile_a).speed(1));
-                ui.end_row();
-
-                ui.label("Ejectile Z   ");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.ejectile_z).speed(1));
-                ui.label("Ejectile A   ");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.ejectile_a).speed(1));
-                ui.end_row();
-
-                ui.label("Magnetic Field(kG)");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.b_field).speed(10.0));
-                ui.label("SPS Angle(deg)");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.sps_angle).speed(1.0));
-                ui.label("Projectile KE(MeV)");
-                ui.add(egui::widgets::DragValue::new(&mut self.parameters.kinematics.projectile_ke).speed(0.01));
-                ui.end_row();
-
-                ui.label("Reaction Equation");
-                ui.label(&self.rxn_eqn);
-                if ui.button("Set Kinematics").clicked() {
-                    self.rxn_eqn = self.parameters.kinematics.generate_rxn_eqn(&self.mass_map);
-                }
-            });
-
-            ui.separator();
             ui.add(
                 egui::widgets::ProgressBar::new(match self.progress.lock() {
                     Ok(x) => *x,
@@ -331,6 +471,12 @@ impl App for EVBApp {
                 .show_percentage(),
             );
 
+            // Check if the thread handle exists to determine if the process is running
+            let is_running = self.thread_handle.is_some();
+            if is_running {
+                ui.add(egui::Spinner::new());
+            }
+            
             if ui
                 .add_enabled(
                     self.thread_handle.is_none(),
@@ -346,8 +492,8 @@ impl App for EVBApp {
             } else {
                 self.check_and_shutdown_processing_thread();
             }
-
         });
+
     }
 }
 

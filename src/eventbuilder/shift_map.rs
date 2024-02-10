@@ -1,12 +1,18 @@
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::fs::File;
-use std::path::Path;
-use std::io::{BufReader, BufRead};
 use std::num::ParseIntError;
 use std::num::ParseFloatError;
 
 use super::compass_data::generate_board_channel_uuid;
+
+#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShiftMapEntry {
+    pub board_number: u32,
+    pub channel_number: u32,
+    pub time_shift: f64, // Assuming time shift is a floating-point number; adjust the type as needed
+}
+
 
 #[derive(Debug)]
 pub enum ShiftError {
@@ -53,29 +59,13 @@ pub struct ShiftMap {
 }
 
 impl ShiftMap {
-    pub fn new(path: &Path) -> Result<ShiftMap, ShiftError> {
-        let file = File::open(path)?;
-        let mut reader = BufReader::new(file);
-        let mut junk = String::new();
-        let mut mapper = ShiftMap {
-            map: HashMap::new()
-        };
-
-        reader.read_line(&mut junk)?;
-        for line in reader.lines() {
-            match line {
-                Ok(line_str) => {
-                    let entries: Vec<&str> = line_str.split_whitespace().collect();
-                    let board: u32 = entries[0].parse()?;
-                    let channel: u32 = entries[1].parse()?;
-                    let id = generate_board_channel_uuid(&board, &channel);
-                    let shift: f64 = entries[2].parse()?;
-                    mapper.map.insert(id, shift);
-                },
-                Err(x) => return Err(ShiftError::from(x))
-            };
+    pub fn new(entries: Vec<ShiftMapEntry>) -> ShiftMap {
+        let mut map = HashMap::new();
+        for entry in entries {
+            let id = generate_board_channel_uuid(&entry.board_number, &entry.channel_number);
+            map.insert(id, entry.time_shift);
         }
-        return Ok(mapper);
+        ShiftMap { map }
     }
 
     pub fn get_timeshift(&self, id: &u32) -> f64 {
