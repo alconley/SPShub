@@ -16,8 +16,6 @@ use super::nuclear_data::MassMap;
 use super::kinematics::KineParameters;
 use super::ws::{Workspace, WorkspaceError};
 
-
-
 #[derive(Debug, Serialize, Deserialize)]
 struct EvbAppParams {
     pub workspace: Option<Workspace>,
@@ -44,7 +42,6 @@ impl Default for EvbAppParams {
     }
 }
 
-
 #[derive(serde::Deserialize, serde::Serialize)]
 #[derive(Debug, Default)]
 pub struct EVBApp {
@@ -61,7 +58,6 @@ pub struct EVBApp {
     thread_handle: Option<JoinHandle<Result<(), EVBError>>>,
 
 }
-
 
 impl EVBApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {

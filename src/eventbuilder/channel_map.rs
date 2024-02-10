@@ -15,7 +15,7 @@ const INVALID_LOCAL_CHANNEL: i32 = -1;
 
 //Channels to be mapped in the ChannelMap, each variant is the verbatim keyword in the channel map
 #[derive(Debug, Clone, Copy, PartialEq, AsRefStr, EnumIter, Serialize, Deserialize)]
-pub enum SPSChannelType {
+pub enum ChannelType {
     //Detector fields -> can be channel mapped
     AnodeFront,
     AnodeBack,
@@ -40,9 +40,9 @@ pub enum SPSChannelType {
     None
 }
 
-impl SPSChannelType {
-    pub fn get_channel_vec() -> Vec<SPSChannelType> {
-        SPSChannelType::iter().collect()
+impl ChannelType {
+    pub fn get_channel_vec() -> Vec<ChannelType> {
+        ChannelType::iter().collect()
     }
 }
 
@@ -82,14 +82,14 @@ impl std::error::Error for ChannelMapError {
 
 #[derive(Debug, Clone)]
 pub struct ChannelData {
-    pub channel_type: SPSChannelType,
+    pub channel_type: ChannelType,
     pub local_channel: i32,
     pub local_det_id: i32
 }
 
 impl Default for ChannelData {
     fn default() -> Self {
-        ChannelData { channel_type: SPSChannelType::None, local_channel: INVALID_LOCAL_CHANNEL, local_det_id: INVALID_LOCAL_DET_ID }
+        ChannelData { channel_type: ChannelType::None, local_channel: INVALID_LOCAL_CHANNEL, local_det_id: INVALID_LOCAL_DET_ID }
     }
 }
 
@@ -101,7 +101,7 @@ pub struct ChannelMap {
 impl ChannelMap {
     pub fn new(file: &Path) -> Result<ChannelMap, ChannelMapError> {
         let mut cmap = ChannelMap { map: HashMap::new() };
-        let channel_types = SPSChannelType::get_channel_vec();
+        let channel_types = ChannelType::get_channel_vec();
 
         let mut file_handle = File::open(file)?;
         let mut file_contents = String::new();
@@ -144,4 +144,5 @@ impl ChannelMap {
     pub fn get_channel_data(&self, uuid: &u32) -> Option<&ChannelData> {
         return self.map.get(uuid);
     }
+    
 }

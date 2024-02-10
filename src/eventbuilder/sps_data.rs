@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use super::compass_data::{CompassData, decompose_uuid_to_board_channel};
-use super::channel_map::{ChannelMap, SPSChannelType};
+use super::channel_map::{ChannelMap, ChannelType};
 use super::used_size::UsedSize;
 use std::collections::BTreeMap;
 use std::hash::Hash;
@@ -145,101 +145,101 @@ impl SPSData {
                 None => continue
             };
             match channel_data.channel_type {
-                SPSChannelType::ScintLeft => {
+                ChannelType::ScintLeft => {
                     self.set_value(&SPSDataField::ScintLeftEnergy, hit.energy);
                     self.set_value(&SPSDataField::ScintLeftShort, hit.energy_short);
                     self.set_value(&SPSDataField::ScintLeftTime, hit.timestamp);
                 }
 
-                SPSChannelType::ScintRight => {
+                ChannelType::ScintRight => {
                     self.set_value(&SPSDataField::ScintRightEnergy, hit.energy);
                     self.set_value(&SPSDataField::ScintRightShort, hit.energy_short);
                     self.set_value(&SPSDataField::ScintRightTime, hit.timestamp);
                 }
 
-                SPSChannelType::Cathode => {
+                ChannelType::Cathode => {
                     self.set_value(&SPSDataField::CathodeEnergy, hit.energy);
                     self.set_value(&SPSDataField::CathodeShort, hit.energy_short);
                     self.set_value(&SPSDataField::CathodeTime, hit.timestamp);
                 }
 
-                SPSChannelType::DelayFrontRight => {
+                ChannelType::DelayFrontRight => {
                     self.set_value(&SPSDataField::DelayFrontRightEnergy, hit.energy);
                     self.set_value(&SPSDataField::DelayFrontRightShort, hit.energy_short);
                     self.set_value(&SPSDataField::DelayFrontRightTime, hit.timestamp);
                     dfr_time = hit.timestamp;
                 }
 
-                SPSChannelType::DelayFrontLeft => {
+                ChannelType::DelayFrontLeft => {
                     self.set_value(&SPSDataField::DelayFrontLeftEnergy, hit.energy);
                     self.set_value(&SPSDataField::DelayFrontLeftShort, hit.energy_short);
                     self.set_value(&SPSDataField::DelayFrontLeftTime, hit.timestamp);
                     dfl_time = hit.timestamp;
                 }
 
-                SPSChannelType::DelayBackRight => {
+                ChannelType::DelayBackRight => {
                     self.set_value(&SPSDataField::DelayBackRightEnergy, hit.energy);
                     self.set_value(&SPSDataField::DelayBackRightShort, hit.energy_short);
                     self.set_value(&SPSDataField::DelayBackRightTime, hit.timestamp);
                     dbr_time = hit.timestamp;
                 }
 
-                SPSChannelType::DelayBackLeft => {
+                ChannelType::DelayBackLeft => {
                     self.set_value(&SPSDataField::DelayBackLeftEnergy, hit.energy);
                     self.set_value(&SPSDataField::DelayBackLeftShort, hit.energy_short);
                     self.set_value(&SPSDataField::DelayBackLeftTime, hit.timestamp);
                     dbl_time = hit.timestamp;
                 }
 
-                SPSChannelType::AnodeFront => {
+                ChannelType::AnodeFront => {
                     self.set_value(&SPSDataField::AnodeFrontEnergy, hit.energy);
                     self.set_value(&SPSDataField::AnodeFrontShort, hit.energy_short);
                     self.set_value(&SPSDataField::AnodeFrontTime, hit.timestamp);
                 }
 
-                SPSChannelType::AnodeBack => {
+                ChannelType::AnodeBack => {
                     self.set_value(&SPSDataField::AnodeBackEnergy, hit.energy);
                     self.set_value(&SPSDataField::AnodeBackShort, hit.energy_short);
                     self.set_value(&SPSDataField::AnodeBackTime, hit.timestamp);
                 }
 
-                SPSChannelType::Cebra0 => {
+                ChannelType::Cebra0 => {
                     self.set_value(&SPSDataField::Cebra0Energy, hit.energy);
                     self.set_value(&SPSDataField::Cebra0Short, hit.energy_short);
                     self.set_value(&SPSDataField::Cebra0Time, hit.timestamp);
                 }
 
-                SPSChannelType::Cebra1 => {
+                ChannelType::Cebra1 => {
                     self.set_value(&SPSDataField::Cebra1Energy, hit.energy);
                     self.set_value(&SPSDataField::Cebra1Short, hit.energy_short);
                     self.set_value(&SPSDataField::Cebra1Time, hit.timestamp);
                 }
 
-                SPSChannelType::Cebra2 => {
+                ChannelType::Cebra2 => {
                     self.set_value(&SPSDataField::Cebra2Energy, hit.energy);
                     self.set_value(&SPSDataField::Cebra2Short, hit.energy_short);
                     self.set_value(&SPSDataField::Cebra2Time, hit.timestamp);
                 }
 
-                SPSChannelType::Cebra3 => {
+                ChannelType::Cebra3 => {
                     self.set_value(&SPSDataField::Cebra3Energy, hit.energy);
                     self.set_value(&SPSDataField::Cebra3Short, hit.energy_short);
                     self.set_value(&SPSDataField::Cebra3Time, hit.timestamp);
                 }
 
-                SPSChannelType::Cebra4 => {
+                ChannelType::Cebra4 => {
                     self.set_value(&SPSDataField::Cebra4Energy, hit.energy);
                     self.set_value(&SPSDataField::Cebra4Short, hit.energy_short);
                     self.set_value(&SPSDataField::Cebra4Time, hit.timestamp);
                 }
 
-                SPSChannelType::Cebra5 => {
+                ChannelType::Cebra5 => {
                     self.set_value(&SPSDataField::Cebra5Energy, hit.energy);
                     self.set_value(&SPSDataField::Cebra5Short, hit.energy_short);
                     self.set_value(&SPSDataField::Cebra5Time, hit.timestamp);
                 }
 
-                SPSChannelType::Cebra6 => {
+                ChannelType::Cebra6 => {
                     self.set_value(&SPSDataField::Cebra6Energy, hit.energy);
                     self.set_value(&SPSDataField::Cebra6Short, hit.energy_short);
                     self.set_value(&SPSDataField::Cebra6Time, hit.timestamp);
