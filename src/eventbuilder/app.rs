@@ -343,6 +343,7 @@ impl EVBApp {
             if ui.button("Set Kinematics").clicked() {
                 self.rxn_eqn = self.parameters.kinematics.generate_rxn_eqn(&self.mass_map);
             }
+
         });
 
     }

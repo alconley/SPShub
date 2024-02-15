@@ -23,8 +23,8 @@ pub struct KineParameters {
 impl Default for KineParameters {
     fn default() -> Self {
         KineParameters {
-            target_z: 0,
-            target_a: 0,
+            target_z: 6,
+            target_a: 12,
             projectile_z: 1,
             projectile_a: 2,
             ejectile_z: 1,
@@ -46,6 +46,7 @@ impl KineParameters {
     }
 
     pub fn generate_rxn_eqn(&self, nuc_map: &MassMap) -> String {
+
         let targ_str = match nuc_map.get_data(&self.target_z, &self.target_a) {
             Some(data) => &data.isotope,
             None => "Invalid"
@@ -76,6 +77,8 @@ fn calculate_z_offset(params: &KineParameters, nuc_map: &MassMap) -> Option<f64>
         Some(data) => data,
         None => return None
     };
+
+    println!("Target: {:?}", target);
     let projectile = match nuc_map.get_data(&params.projectile_z, &params.projectile_a) {
         Some(data) => data,
         None => return None

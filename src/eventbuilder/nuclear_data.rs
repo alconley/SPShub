@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::io::BufRead;
 use std::fmt::Display;
 use std::error::Error;
+use log::info;
 
 #[derive(Debug)]
 pub enum MassError {
@@ -69,15 +70,14 @@ const ELECTRON_MASS: f64 = 0.51099895000; //MeV
 
 #[derive(Debug, Clone, Default)]
 pub struct MassMap {
-    map: HashMap<u32, NuclearData>,
-    file: PathBuf
+    pub map: HashMap<u32, NuclearData>,
+    pub file: PathBuf
 }
 
 impl MassMap {
     pub fn new() -> Result<Self, MassError> {
-        // let mut map = MassMap { map: HashMap::new(), file: PathBuf::from(std::env::current_dir()?.join("etc").join("amdc_2016.txt")) };
-        let mut map = MassMap { map: HashMap::new(), file: PathBuf::from("etc/amdc_2016.txt") };
-
+        let mut map = MassMap { map: HashMap::new(), file: PathBuf::from(std::env::current_dir()?.join("etc").join("amdc_2016.txt")) };
+        info!("Mass file: {:?}", map.file);
         map.init()?;
         return Ok(map);
     }
