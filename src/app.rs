@@ -1,4 +1,10 @@
-use crate::eventbuilder::app::EVBApp;
+// Conditional compilation
+#[cfg(not(target_arch = "wasm32"))]
+use crate::{
+    sps_cebra_eventbuilder::app::EVBApp as SPSCeBrAEvbApp,
+    sps_eventbuilder::app::EVBApp as SPSEvbApp,
+};
+
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -6,36 +12,49 @@ use crate::eventbuilder::app::EVBApp;
 pub struct TemplateApp {
     // Example stuff:
     // #[serde(skip)]
-    evb_app: EVBApp,
+    #[cfg(not(target_arch = "wasm32"))]
+    sps_cebra_evb_app: SPSCeBrAEvbApp,
+
+    #[cfg(not(target_arch = "wasm32"))]
+    sps_evb_app: SPSEvbApp,
 }
 
 impl Default for TemplateApp {
     fn default() -> Self {
         Self {
-            evb_app: EVBApp::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            sps_cebra_evb_app: SPSCeBrAEvbApp::default(), // Default initialization.
+
+            #[cfg(not(target_arch = "wasm32"))]
+            sps_evb_app: SPSEvbApp::default(), // Default initialization.
         }
     }
 }
 
 impl TemplateApp {
     /// Called once before the first frame.
+    /// Creates a new instance of the application, possibly restoring from previous state.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // This is also where you can customize the look and feel of egui using
-        // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let app = Self {
+                sps_cebra_evb_app: SPSCeBrAEvbApp::new(cc), // Custom initialization.
+                sps_evb_app: SPSEvbApp::new(cc), // Custom initialization.
+            };
 
-        let app = Self {
-            evb_app: EVBApp::new(cc), // Initialize EVBApp here
-            // Initialize other fields as needed
-        };
+            // Attempt to restore the app state from persistent storage, if available.
+            if let Some(storage) = cc.storage {
+                if let Some(state) = eframe::get_value::<Self>(storage, eframe::APP_KEY) {
+                    return state; // Return the restored state.
+                }
+            }
 
-        // Load previous app state (if any).
-        // Note that you must enable the `persistence` feature for this to work.
-        if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+            app // Return the newly initialized app.
         }
-
-        // Default::default()
-        app
+        #[cfg(target_arch = "wasm32")]
+        {
+            Self::default() // WASM targets use default initialization.
+        }
     }
 
 }
@@ -71,16 +90,30 @@ impl eframe::App for TemplateApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            
             ui.heading("Conley's Tool Box");
 
+            // Place utilities or warnings at the bottom, aligned to the left.
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-                // powered_by_egui_and_eframe(ui);
+                // Display a warning in debug builds about performance.
                 egui::warn_if_debug_build(ui);
             });
 
-            self.evb_app.update(ctx, frame)
-
+            // Use a clearer conditional statement to differentiate between web and non-web targets.
+            if cfg!(target_arch = "wasm32") {
+                // Instructions for web users, as event builders are not available.
+                egui::Window::new("Event Builders").show(ctx, |ui| {
+                    ui.label("Event builders are only available when compiling locally.");
+                    ui.label("Download: 'git clone https://github.com/alconley/sps_cebra.git'");
+                    ui.label("Run: 'cargo run --release'");
+                });
+            } else {
+                // Update calls for non-web targets are grouped to avoid repetitive conditional checks.
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    self.sps_cebra_evb_app.update(ctx, frame);
+                    self.sps_evb_app.update(ctx, frame);
+                }
+            }
         });
 
     }
