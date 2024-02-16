@@ -9,6 +9,6 @@ pub mod kinematics;
 pub mod nuclear_data;
 pub mod scaler_list;
 pub mod shift_map;
-pub mod sps_data;
+pub mod channel_data;
 pub mod used_size;
 pub mod ws;

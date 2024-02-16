@@ -6,6 +6,7 @@ use std::thread::JoinHandle;
 use std::path::Path;
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 
 use eframe::egui::{self, RichText, Color32};
 use eframe::App;
@@ -226,7 +227,7 @@ impl EVBApp {
                             });
                         });
                     });
-                    ui.add_space(20.0); // Add space between boards
+                    ui.add_space(1.0); // Add space between boards
                 }
             });
         });
@@ -358,24 +359,24 @@ impl EVBApp {
                 Some(ws) => ws.get_parent_str(),
                 None => "None"
             });
+
             if ui.button("Open").clicked() {
-                let result = native_dialog::FileDialog::new()
-                            .set_location(&std::env::current_dir().expect("Couldn't access runtime directory"))
-                            .show_open_single_dir();
+                let result = rfd::FileDialog::new()
+                             .set_directory(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+                             .pick_folder();
+            
                 match result {
-                    Ok(path) => match path {
-                        Some(real_path) => self.parameters.workspace = match Workspace::new(&real_path) {
-                            Ok(ws) => Some(ws),
-                            Err(e) => {
-                                error!("Error creating workspace: {}", e);
-                                None
-                            }
+                    Some(real_path) => self.parameters.workspace = match Workspace::new(&real_path) {
+                        Ok(ws) => Some(ws),
+                        Err(e) => {
+                            eprintln!("Error creating workspace: {}", e);
+                            None
                         },
-                        None => ()
-                    }
-                    Err(_) => error!("File dialog error!")
+                    },
+                    None => (),
                 }
             }
+
             ui.end_row();
 
             ui.label("Coincidence Window (ns)");
@@ -433,35 +434,33 @@ impl App for EVBApp {
 
             ui.menu_button("File", |ui| {
                 if ui.button("Open Config...").clicked() {
-                    let result = native_dialog::FileDialog::new()
-                            .set_location(&std::env::current_dir().expect("Couldn't access runtime directory"))
-                            .add_filter("YAML file", &["yaml"])
-                            .show_open_single_file();
+                    let result = rfd::FileDialog::new()
+                                 .set_directory(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+                                 .add_filter("YAML file", &["yaml"])
+                                 .pick_file();
+            
                     match result {
-                        Ok(path) => match path {
-                            Some(real_path) => self.read_params_from_file(&real_path),
-                            None => ()
-                        }
-                        Err(_) => error!("File dialog error!")
+                        Some(real_path) => self.read_params_from_file(&real_path),
+                        None => (),
                     }
                 }
                 if ui.button("Save Config...").clicked() {
-                    let result = native_dialog::FileDialog::new()
-                            .set_location(&std::env::current_dir().expect("Couldn't access runtime directory"))
-                            .add_filter("YAML file", &["yaml"])
-                            .show_save_single_file();
+                    let result = rfd::FileDialog::new()
+                                 .set_directory(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+                                 .add_filter("YAML file", &["yaml"])
+                                 .save_file();
+            
                     match result {
-                        Ok(path) => match path {
-                            Some(real_path) => self.write_params_to_file(&real_path),
-                            None => ()
-                        }
-                        Err(_) => error!("File dialog error!")
+                        Some(real_path) => self.write_params_to_file(&real_path),
+                        None => (),
                     }
                 }
             });
         
             ui.separator();
-                self.ui_tabs(ui);
+
+            self.ui_tabs(ui);
+            
             ui.separator();
 
             ui.add(

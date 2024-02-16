@@ -13,7 +13,7 @@ use super::scaler_list::{ScalerEntryUI, ScalerList};
 use super::shift_map::{ShiftMap, ShiftMapEntry};
 use super::compass_file::CompassFile;
 use super::event_builder::EventBuilder;
-use super::sps_data::SPSData;
+use super::channel_data::ChannelData;
 use super::error::EVBError;
 use super::nuclear_data::MassMap;
 use super::kinematics::{KineParameters, calculate_weights};
@@ -48,7 +48,7 @@ fn clean_up_unpack_dir(unpack_dir: &Path) -> Result<(), EVBError> {
     Ok(())
 }
 
-fn write_dataframe(data: SPSData, filepath: &Path) -> Result<(), PolarsError> {
+fn write_dataframe(data: ChannelData, filepath: &Path) -> Result<(), PolarsError> {
     info!("Writing dataframe to disk at {}", filepath.display());
     let columns : Vec<Series> = data.convert_to_series();
     let mut df = DataFrame::new(columns)?;
@@ -57,7 +57,7 @@ fn write_dataframe(data: SPSData, filepath: &Path) -> Result<(), PolarsError> {
     Ok(())
 }
 
-fn write_dataframe_fragment(data: SPSData, out_dir: &Path, run_number: &i32, frag_number: &i32) -> Result<(), PolarsError> {
+fn write_dataframe_fragment(data: ChannelData, out_dir: &Path, run_number: &i32, frag_number: &i32) -> Result<(), PolarsError> {
     let frag_file_path = out_dir.join(format!("run_{}_{}.parquet", run_number, frag_number));
     write_dataframe(data, &frag_file_path)?;
     Ok(())
@@ -95,7 +95,7 @@ fn process_run(params: RunParams<'_>, k_params: &KineParameters, progress: Arc<M
     }
 
     let mut evb = EventBuilder::new(&params.coincidence_window);
-    let mut analyzed_data = SPSData::default();
+    let mut analyzed_data = ChannelData::default();
     let x_weights = calculate_weights(&k_params, params.nuc_map);
 
     let mut earliest_file_index: Option<usize>;
@@ -145,7 +145,7 @@ fn process_run(params: RunParams<'_>, k_params: &KineParameters, progress: Arc<M
             if analyzed_data.get_used_size() > MAX_USED_SIZE {
                 write_dataframe_fragment(analyzed_data, params.output_file_path.parent().unwrap(), &params.run_number, &frag_number)?;
                 //allocate new vector
-                analyzed_data = SPSData::default();
+                analyzed_data = ChannelData::default();
                 frag_number += 1;
             }
         }
