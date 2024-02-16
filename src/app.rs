@@ -53,13 +53,6 @@ impl TemplateApp {
         }
         #[cfg(target_arch = "wasm32")]
         {
-            // Attempt to restore the app state from persistent storage, if available.
-            if let Some(storage) = cc.storage {
-                if let Some(state) = eframe::get_value::<Self>(storage, eframe::APP_KEY) {
-                    return state; // Return the restored state.
-                }
-            }
-
             Self::default() // WASM targets use default initialization.
         }
     }
