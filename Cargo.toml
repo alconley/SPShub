@@ -8,6 +8,7 @@ rust-version = "1.72"
 
 [dependencies]
 egui = "0.26.0"
+egui_plot = "0.26.0"
 eframe = { version = "0.26.0", default-features = false, features = [
     "accesskit",     # Make egui comptaible with screen readers. NOTE: adds a lot of dependencies.
     "default_fonts", # Embed the default egui fonts.
@@ -18,6 +19,11 @@ log = "0.4"
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
+
+# SPS Plot dependencies
+reqwest = {version = "0.11.24", features = ["blocking"]}
+scraper = "0.18.1"
+regex = "1.10.3"
 
 # native:
 

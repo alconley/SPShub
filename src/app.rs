@@ -5,6 +5,7 @@ use crate::{
     sps_eventbuilder::app::EVBApp as SPSEvbApp,
 };
 
+use crate::sps_plot::app::SPSPlotApp;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -17,6 +18,8 @@ pub struct TemplateApp {
 
     #[cfg(not(target_arch = "wasm32"))]
     sps_evb_app: SPSEvbApp,
+
+    sps_plot_app: SPSPlotApp,
 }
 
 impl Default for TemplateApp {
@@ -27,6 +30,8 @@ impl Default for TemplateApp {
 
             #[cfg(not(target_arch = "wasm32"))]
             sps_evb_app: SPSEvbApp::default(), // Default initialization.
+
+            sps_plot_app: SPSPlotApp::default(),
         }
     }
 }
@@ -40,6 +45,7 @@ impl TemplateApp {
             let app = Self {
                 sps_cebra_evb_app: SPSCeBrAEvbApp::new(cc), // Custom initialization.
                 sps_evb_app: SPSEvbApp::new(cc), // Custom initialization.
+                sps_plot_app: SPSPlotApp::new(cc), // Custom initialization.
             };
 
             // Attempt to restore the app state from persistent storage, if available.
@@ -106,12 +112,17 @@ impl eframe::App for TemplateApp {
                     ui.label("Download: 'git clone https://github.com/alconley/sps_cebra.git'");
                     ui.label("Run: 'cargo run --release'");
                 });
+                
+                self.sps_plot_app.update(ctx, frame);
+
             } else {
                 // Update calls for non-web targets are grouped to avoid repetitive conditional checks.
                 #[cfg(not(target_arch = "wasm32"))]
                 {
                     self.sps_cebra_evb_app.update(ctx, frame);
                     self.sps_evb_app.update(ctx, frame);
+                    self.sps_plot_app.update(ctx, frame);
+
                 }
             }
         });
