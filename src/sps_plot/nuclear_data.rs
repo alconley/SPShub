@@ -112,4 +112,5 @@ impl MassMap {
     pub fn get_data(&self, z: &u32, a: &u32) -> Option<&NuclearData> {
         self.map.get(&generate_nucleus_id(z, a))
     }
+    
 }

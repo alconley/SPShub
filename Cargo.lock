@@ -3948,6 +3948,7 @@ dependencies = [
  "egui_plot",
  "env_logger",
  "flate2",
+ "getrandom",
  "log",
  "nom",
  "polars",
@@ -3961,6 +3962,7 @@ dependencies = [
  "strum 0.26.1",
  "strum_macros 0.26.1",
  "tar",
+ "tokio",
  "wasm-bindgen-futures",
 ]
 
@@ -4256,7 +4258,19 @@ dependencies = [
  "num_cpus",
  "pin-project-lite",
  "socket2 0.5.5",
+ "tokio-macros",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "tokio-macros"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b8a1e28f2deaa14e508979454cb3a223b10b938b45af148bc0986de36f1923b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
 ]
 
 [[package]]

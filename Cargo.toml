@@ -21,9 +21,10 @@ log = "0.4"
 serde = { version = "1", features = ["derive"] }
 
 # SPS Plot dependencies
-reqwest = {version = "0.11.24", features = ["blocking"]}
+reqwest = {version = "0.11.24", features = ["blocking", "json"]}
 scraper = "0.18.1"
 regex = "1.10.3"
+tokio = { version = "1.36.0", default-features = false, features = ["rt", "sync", "macros", "io-util", "time"] }
 
 # native:
 
@@ -44,7 +45,7 @@ rfd = "0.13"
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
-
+getrandom = { version = "0.2", features = ["js"] }
 
 [profile.release]
 opt-level = 2 # fast and small wasm
