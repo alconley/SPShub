@@ -4,6 +4,7 @@
 mod app;
 pub use app::TemplateApp; 
 
+#[cfg(not(target_arch = "wasm32"))]
 mod sps_plot;
 
 // The following modules are conditionally compiled only for non-WASM targets, 

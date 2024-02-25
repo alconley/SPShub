@@ -1,3 +1,4 @@
+
 use reqwest;
 use regex::Regex;
 use scraper::{Html, Selector};

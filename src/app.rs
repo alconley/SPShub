@@ -3,9 +3,8 @@
 use crate::{
     sps_cebra_eventbuilder::app::EVBApp as SPSCeBrAEvbApp,
     sps_eventbuilder::app::EVBApp as SPSEvbApp,
+    sps_plot::app::SPSPlotApp,
 };
-
-use crate::sps_plot::app::SPSPlotApp;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -21,6 +20,7 @@ pub struct TemplateApp {
     sps_evb_app: SPSEvbApp,
     sps_evb_app_visible: bool,
 
+    #[cfg(not(target_arch = "wasm32"))]
     sps_plot_app: SPSPlotApp,
     sps_plot_app_visible: bool,
 }
@@ -36,6 +36,7 @@ impl Default for TemplateApp {
             sps_evb_app: SPSEvbApp::default(), // Default initialization.
             sps_evb_app_visible: false,
 
+            #[cfg(not(target_arch = "wasm32"))]
             sps_plot_app: SPSPlotApp::default(),
             sps_plot_app_visible: false,
         }
@@ -159,7 +160,12 @@ impl eframe::App for TemplateApp {
 
                 
                 if self.sps_plot_app_visible {
-                    self.sps_plot_app.update(ctx, frame);
+
+                    egui::Window::new("SPS Plot").show(ctx, |ui| {
+                        ui.label("Will be available soon. Hopefully lol");
+                    });
+
+                    // self.sps_plot_app.update(ctx, frame);
                 }
 
             } else {
