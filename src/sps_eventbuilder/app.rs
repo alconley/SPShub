@@ -186,43 +186,39 @@ impl EVBApp {
         });
 
         // Use a horizontal scroll area to contain all the boards
-        egui::ScrollArea::both().show(ui, |ui| {
-            ui.horizontal(|ui| {
-                for (board_idx, board) in self.parameters.channel_map_entries.iter_mut().enumerate() {
-                    ui.vertical(|ui| {
-                        ui.group(|ui| {
-                            ui.label(format!("Board {}", board_idx));
-                            ui.label("Channel Number");
-                            egui::Grid::new(format!("board_{}", board_idx)).num_columns(2).spacing([20.0, 4.0]).show(ui, |ui| {
-                                for (channel_idx, channel_type) in board.channels.iter_mut().enumerate() {
-                                    ui.label(format!("{}", channel_idx));
-                                    egui::ComboBox::from_id_source(format!("channel_type_{}_{}", board_idx, channel_idx))
-                                        .selected_text(format!("{:?}", channel_type))
-                                        .show_ui(ui, |ui| {
-                                            // Populate ComboBox with channel types
+        ui.horizontal(|ui| {
+            for (board_idx, board) in self.parameters.channel_map_entries.iter_mut().enumerate() {
+                ui.vertical(|ui| {
+                    ui.group(|ui| {
 
-                                            ui.selectable_value(channel_type, ChannelType::AnodeFront, "AnodeFront");
-                                            ui.selectable_value(channel_type, ChannelType::AnodeBack, "AnodeBack");
-                                            ui.selectable_value(channel_type, ChannelType::ScintLeft, "ScintLeft");
-                                            ui.selectable_value(channel_type, ChannelType::ScintRight, "ScintRight");
-                                            ui.selectable_value(channel_type, ChannelType::Cathode, "Cathode");
-                                            ui.selectable_value(channel_type, ChannelType::DelayFrontLeft, "DelayFrontLeft");
-                                            ui.selectable_value(channel_type, ChannelType::DelayFrontRight, "DelayFrontRight");
-                                            ui.selectable_value(channel_type, ChannelType::DelayBackLeft, "DelayBackLeft");
-                                            ui.selectable_value(channel_type, ChannelType::DelayBackRight, "DelayBackRight");
-                                            ui.selectable_value(channel_type, ChannelType::None, "None");
+                        ui.label(format!("Board {}", board_idx));
+                        ui.label("Channel Number");
+                        egui::Grid::new(format!("board_{}", board_idx)).num_columns(2).spacing([20.0, 4.0]).show(ui, |ui| {
+                            for (channel_idx, channel_type) in board.channels.iter_mut().enumerate() {
+                                ui.label(format!("{}", channel_idx));
+                                egui::ComboBox::from_id_source(format!("channel_type_{}_{}", board_idx, channel_idx))
+                                    .selected_text(format!("{:?}", channel_type))
+                                    .show_ui(ui, |ui| {
+                                        // Populate ComboBox with channel types
+                                        ui.selectable_value(channel_type, ChannelType::AnodeFront, "AnodeFront");
+                                        ui.selectable_value(channel_type, ChannelType::AnodeBack, "AnodeBack");
+                                        ui.selectable_value(channel_type, ChannelType::ScintLeft, "ScintLeft");
+                                        ui.selectable_value(channel_type, ChannelType::ScintRight, "ScintRight");
+                                        ui.selectable_value(channel_type, ChannelType::Cathode, "Cathode");
+                                        ui.selectable_value(channel_type, ChannelType::DelayFrontLeft, "DelayFrontLeft");
+                                        ui.selectable_value(channel_type, ChannelType::DelayFrontRight, "DelayFrontRight");
+                                        ui.selectable_value(channel_type, ChannelType::DelayBackLeft, "DelayBackLeft");
+                                        ui.selectable_value(channel_type, ChannelType::DelayBackRight, "DelayBackRight");
+                                        ui.selectable_value(channel_type, ChannelType::None, "None");
 
-
-
-                                        });
-                                    ui.end_row();
-                                }
-                            });
+                                    });
+                                ui.end_row();
+                            }
                         });
                     });
-                    ui.add_space(1.0); // Add space between boards
-                }
-            });
+                });
+                ui.add_space(1.0); // Add space between boards
+            }
         });
     }
 
