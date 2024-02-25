@@ -1,8 +1,8 @@
 use log::info;
 
-use eframe::egui::{self, RichText, Color32};
+use eframe::egui::{self, RichText, Color32, Stroke};
 use eframe::App;
-use egui_plot::{Plot, Points, PlotPoints, PlotPoint, Legend, MarkerShape, Text, VLine, PlotBounds};
+use egui_plot::{BarChart, Bar, Orientation, Legend, Plot, PlotBounds, VLine};
 
 use std::f64::consts::PI;
 use std::collections::HashMap;
@@ -36,7 +36,8 @@ pub struct Reaction {
 
     pub excitation_levels: Vec<f64>,
 
-    // Fields for the associated nuclear data
+    pub rho_values: Vec<(f64, f64)>,
+
 }
 
 #[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize)]
@@ -60,7 +61,6 @@ impl SPSPlotApp {
             magnetic_field: 8.7, // kG
             rho_min: 69.0,
             rho_max: 87.0,
-            // reactions: Reaction::default(),
             reactions: Vec::new(),
             reaction_data: HashMap::new(),
             is_loading: false,
@@ -100,18 +100,17 @@ impl SPSPlotApp {
 
     fn reaction_ui(&mut self, ui: &mut egui::Ui) {
 
-
         ui.horizontal(|ui| {
 
             ui.label(RichText::new("Reactions").color(Color32::LIGHT_BLUE).size(18.0));
 
             ui.separator();
 
-            // if ui.button("Calculate").clicked() {
-            //     // self.calculate_rho_for_all();
-            //     // self.calculate_rho_from_levels(&self.reactions.clone());
-            //     self.calculate_rho_for_all();
-            // }
+            if ui.button("Calculate").clicked() {
+                self.calculate_rho_for_all_reactions();
+            }
+
+            ui.separator();
 
             if ui.button("+").clicked() {
                 self.reactions.push(Reaction::default());
@@ -181,8 +180,7 @@ impl SPSPlotApp {
             Ok(map) => map,
             Err(e) => {
                 log::error!("Failed to initialize MassMap: {}", e);
-                // Handle error appropriately, maybe by creating an empty MassMap or exiting
-                MassMap::default() // Placeholder, adjust according to your error handling strategy
+                MassMap::default() 
             }
         };
 
@@ -206,12 +204,11 @@ impl SPSPlotApp {
         info!("Reaction: {:?}", reaction);
     }
         
-    fn fetch_excitation_levels(reaction: &mut Reaction) -> Vec<f64> {
+    fn fetch_excitation_levels(reaction: &mut Reaction) {
 
         let isotope = reaction.resid_data.as_ref().map_or("None", |data| &data.isotope);
         if isotope == "None" {
             log::error!("No isotope found for reaction: {}", reaction.reaction_identifier);
-            return vec![];
         }
 
         // Using an async block, note that this requires an executor to run the block synchronously
@@ -223,109 +220,124 @@ impl SPSPlotApp {
 
         if let Some(levels) = &*levels_lock {
             info!("Fetched excitation levels: {:?}", levels);
-            return levels.clone();
+            reaction.excitation_levels = levels.clone();
+            // return levels.clone();
         } else if let Some(error) = &*error_lock {
             log::error!("Error fetching excitation levels: {}", error);
-            return vec![];
         }
 
-        vec![]
     }
 
-    /*
-    fn calculate_rho_from_levels(&mut self, reaction: &Reaction) {
+    fn excitation_level_to_rho(reaction: &mut Reaction, beam_energy: f64, magnetic_field: f64, sps_angle: f64) {
 
-        // clear the reaction data
+        reaction.rho_values.clear();
 
-        // Extract data needed for immutable borrows before mutable operations
-        let target_data = self.mass_map.get_data(&(reaction.target_z as u32), &(reaction.target_a as u32)).cloned();
-        let projectile_data = self.mass_map.get_data(&(reaction.projectile_z as u32), &(reaction.projectile_a as u32)).cloned();
-        let ejectile_data = self.mass_map.get_data(&(reaction.ejectile_z as u32), &(reaction.ejectile_a as u32)).cloned();
-        
-        if let (Some(target), Some(projectile), Some(ejectile)) = (target_data, projectile_data, ejectile_data) {
+        let target = reaction.target_data.as_ref().unwrap();
+        let projectile = reaction.projectile_data.as_ref().unwrap();
+        let ejectile = reaction.ejectile_data.as_ref().unwrap();
+        let resid = reaction.resid_data.as_ref().unwrap();
 
-            let resid_z = target.z + projectile.z - ejectile.z;
-            let resid_a = target.a + projectile.a - ejectile.a;
+        let reaction_identifier = format!("{}({},{}){}", target.isotope, projectile.isotope, ejectile.isotope, resid.isotope);
+        info!("Reaction: {}", reaction_identifier);
 
-            if let Some(resid) = self.mass_map.get_data(&resid_z, &resid_a).cloned() {
-                let reaction_identifier = format!("{}({},{}){}", target.isotope, projectile.isotope, ejectile.isotope, resid.isotope);
-                info!("Reaction: {}", reaction_identifier);
+        let q_value = target.mass + projectile.mass - ejectile.mass - resid.mass;
 
-                let mut reaction_values = Vec::new();
+        for excitation in &reaction.excitation_levels {
 
-                let q_value = target.mass + projectile.mass - ejectile.mass - resid.mass;
+            let reaction_q_value = q_value - excitation;
+            // let beam_reaction_energy = self.beam_energy; // could put energy loss through target here
+            let beam_reaction_energy = beam_energy; // could put energy loss through target here
 
-                for excitation in &reaction.excitation_levels {
-                    let reaction_q_value = q_value - excitation;
-                    let beam_reaction_energy = self.beam_energy; // could put energy loss through target here
+            let _threshold = - reaction_q_value * (ejectile.mass + resid.mass) / (ejectile.mass + resid.mass - projectile.mass);
+            let term1 = (projectile.mass * ejectile.mass * beam_reaction_energy).sqrt() / (ejectile.mass + resid.mass) * (sps_angle * PI / 180.0).cos();
+            let term2 = (beam_reaction_energy * (resid.mass - projectile.mass) + resid.mass * reaction_q_value) / (ejectile.mass + resid.mass);
 
-                    let _threshold = - reaction_q_value * (ejectile.mass + resid.mass) / (ejectile.mass + resid.mass - projectile.mass);
-                    let term1 = (projectile.mass * ejectile.mass * beam_reaction_energy).sqrt() / (ejectile.mass + resid.mass) * (self.sps_angle * PI / 180.0).cos();
-                    let term2 = (beam_reaction_energy * (resid.mass - projectile.mass) + resid.mass * reaction_q_value) / (ejectile.mass + resid.mass);
+            let ke1 = term1 + (term1*term1 + term2).sqrt();
+            let ke2 = term1 - (term1*term1 + term2).sqrt(); // spspy: spsplot has these as the same? copilot thought the second should be subtracted
 
-                    let ke1 = term1 + (term1*term1 + term2).sqrt();
-                    let ke2 = term1 - (term1*term1 + term2).sqrt(); // spspy: spsplot has these as the same? copilot thought the second should be subtracted
-
-                    let ejectile_energy = if ke1 > 0.0 { ke1 * ke1 } else { ke2 * ke2 }; 
+            let ejectile_energy = if ke1 > 0.0 { ke1 * ke1 } else { ke2 * ke2 }; 
                     
-                    // convert ejectile ke to rho
-                    let p = (ejectile_energy * (ejectile_energy + 2.0 * ejectile.mass)).sqrt();
-                    let qbrho = p/QBRHO2P;
-                    let rho =  qbrho / (self.magnetic_field * ejectile.z as f64);
-                    info!("Excitation: {}, rho: {}", excitation, rho);
+            // convert ejectile ke to rho
+            let p = (ejectile_energy * (ejectile_energy + 2.0 * ejectile.mass)).sqrt();
+            let qbrho = p/QBRHO2P;
+            let rho =  qbrho / (magnetic_field * ejectile.z as f64);
+            info!("Excitation: {}, rho: {}", excitation, rho);
 
-                    reaction_values.push((*excitation, rho));
-                }
-
-                self.reaction_data.insert((*reaction_identifier).to_string(), reaction_values);
-
-            }
+            reaction.rho_values.push((*excitation, rho));
         }
     }
 
-    fn calculate_rho_for_all(&mut self) {
-        // Collect indices or clone reactions to avoid borrowing issues
-        let reactions = self.reactions.clone(); // Example with cloning, adjust based on your needs
-    
-        for reaction in reactions {
-            self.calculate_rho_from_levels(&reaction);
+    fn calculate_rho_for_all_reactions(&mut self) {
+        for reaction in &mut self.reactions {
+            Self::excitation_level_to_rho(reaction, self.beam_energy, self.magnetic_field, self.sps_angle);
         }
     }
 
-    fn plot_reaction_data(&self, ui: &mut egui::Ui) {
+    fn rho_to_barchart(reaction: &mut Reaction, y_value: f64, color: Color32) -> BarChart {
+
+        let mut bars = Vec::new();
+        for (excitation, rho) in &reaction.rho_values {
+
+            let bar = Bar {
+                orientation: Orientation::Vertical,
+                argument: *rho,
+                value: 0.50,
+                bar_width: 0.01,
+                fill: color,
+                stroke: Stroke::new(1.0, color),
+                name: format!("E = {:.3} MeV\nrho = {:.3}\n",*excitation, *rho),
+                base_offset: Some(y_value),
+            };
+
+            bars.push(bar);
+
+        }
+
+        BarChart::new(bars).name(reaction.reaction_identifier.clone()).color(color).highlight(true)
+
+    }
+
+    fn plot(&mut self, ui: &mut egui::Ui) {
         let plot = Plot::new("SPS Plot")
             .show_y(false)
-            .data_aspect(0.5);
-            // .legend(Legend::default());
+            .allow_boxed_zoom(false)
+            .allow_drag(false)
+            .allow_scroll(false)
+            .legend(Legend::default());
+
+        let colors = [
+            Color32::LIGHT_BLUE,
+            Color32::LIGHT_GREEN,
+            Color32::LIGHT_RED,
+            Color32::LIGHT_YELLOW,
+            Color32::LIGHT_GRAY,
+            Color32::BLUE,
+            Color32::GREEN,
+            Color32::RED,
+            Color32::YELLOW,
+            Color32::GRAY,
+        ];
     
         plot.show(ui, |plot_ui| {
 
             // plots the rho values 
-            plot_ui.vline(VLine::new(self.rho_min).color(Color32::LIGHT_GREEN));
-            plot_ui.vline(VLine::new(self.rho_max).color(Color32::LIGHT_GREEN));
+            plot_ui.vline(VLine::new(self.rho_min).color(Color32::RED));
+            plot_ui.vline(VLine::new(self.rho_max).color(Color32::RED));
 
-
-            // extract the reaction name from reaction_data and plot the rho values as x and the y as the index (0) for now
-            for (index, (reaction, data)) in self.reaction_data.iter().enumerate() {
-
-                for (excitation, rho) in data.iter() {
-
-                    let points = Points::new([*rho, index as f64])
-                    .name(excitation.clone())
-                    .shape(MarkerShape::Circle)
-                    .filled(true)
-                    .color(Color32::LIGHT_BLUE)
-                    .radius(4.0);
-
-                    plot_ui.points(points);
-
-                }
+            for (index, reaction) in self.reactions.iter_mut().enumerate() {
+                let color = colors[index % colors.len()];
+                let y_value = index as f64 + 0.25;
+                let barchart = Self::rho_to_barchart(reaction, y_value, color);
+                plot_ui.bar_chart(barchart);
             }
+
+            plot_ui.set_plot_bounds(PlotBounds::from_min_max((self.rho_min - 5.0, -1.0).into(), (self.rho_max + 5.0, self.reactions.len() as f64 + 1.0).into()));
+
         });
     }
-
-    */
+ 
 }
+
 
 impl App for SPSPlotApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
@@ -340,8 +352,9 @@ impl App for SPSPlotApp {
             
             });
 
-            // need a button to plot the data
-            // self.plot_reaction_data(ui);
+            egui::CentralPanel::default().show_inside(ui, |ui| {
+                self.plot(ui);
+            });
 
         });
 

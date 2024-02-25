@@ -27,7 +27,6 @@ regex = "1.10.3"
 tokio = { version = "1.36.0", default-features = false, features = ["rt", "sync", "macros", "io-util", "time"] }
 
 # native:
-
 # Eventbuilder dependencies
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.10"
@@ -44,6 +43,7 @@ rfd = "0.13"
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+web-bindgen = ""
 wasm-bindgen-futures = "0.4"
 getrandom = { version = "0.2", features = ["js"] }
 
