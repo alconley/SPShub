@@ -4,6 +4,7 @@ use crate::{
     sps_cebra_eventbuilder::app::EVBApp as SPSCeBrAEvbApp,
     sps_eventbuilder::app::EVBApp as SPSEvbApp,
     sps_plot::app::SPSPlotApp,
+    plotter::app::PlotterApp,
 };
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -23,6 +24,10 @@ pub struct TemplateApp {
     #[cfg(not(target_arch = "wasm32"))]
     sps_plot_app: SPSPlotApp,
     sps_plot_app_visible: bool,
+
+    plotter_app: PlotterApp,
+    plotter_app_visible: bool,
+
 }
 
 impl Default for TemplateApp {
@@ -39,6 +44,11 @@ impl Default for TemplateApp {
             #[cfg(not(target_arch = "wasm32"))]
             sps_plot_app: SPSPlotApp::default(),
             sps_plot_app_visible: false,
+
+            #[cfg(not(target_arch = "wasm32"))]
+            plotter_app: PlotterApp::default(),
+            plotter_app_visible: false,
+
         }
     }
 }
@@ -58,6 +68,10 @@ impl TemplateApp {
 
                 sps_plot_app: SPSPlotApp::new(cc), // Custom initialization.
                 sps_plot_app_visible: false,
+
+                plotter_app: PlotterApp::new(cc), // Custom initialization.
+                plotter_app_visible: false,
+
             };
 
             // Attempt to restore the app state from persistent storage, if available.
@@ -116,14 +130,18 @@ impl eframe::App for TemplateApp {
 
                 let full_width = ui.available_width(); // Get the full available width to make the label span the entire panel
         
-                if ui.add_sized([full_width, 0.0], egui::SelectableLabel::new(self.sps_cebra_evb_app_visible, "SPS+CeBrA Eventbuilder")).clicked() {
+                if ui.add_sized([full_width, 0.0], egui::SelectableLabel::new(self.sps_cebra_evb_app_visible, "SPS+CeBrA Evb")).clicked() {
                     self.sps_cebra_evb_app_visible = !self.sps_cebra_evb_app_visible;
                 }
-                if ui.add_sized([full_width, 0.0], egui::SelectableLabel::new(self.sps_evb_app_visible, "SPS Eventbuilder")).clicked() {
+                if ui.add_sized([full_width, 0.0], egui::SelectableLabel::new(self.sps_evb_app_visible, "SPS Evb")).clicked() {
                     self.sps_evb_app_visible = !self.sps_evb_app_visible;
                 }
                 if ui.add_sized([full_width, 0.0], egui::SelectableLabel::new(self.sps_plot_app_visible, "SPS Plot")).clicked() {
                     self.sps_plot_app_visible = !self.sps_plot_app_visible;
+                }
+
+                if ui.add_sized([full_width, 0.0], egui::SelectableLabel::new(self.plotter_app_visible, "Plotter")).clicked() {
+                    self.plotter_app_visible = !self.plotter_app_visible;
                 }
             });
         });
@@ -144,7 +162,7 @@ impl eframe::App for TemplateApp {
                     // Instructions for web users, as event builders are not available.
                     egui::Window::new("SPS+CeBrA Eventbuilder").show(ctx, |ui| {
                         ui.label("Event builders are only available when compiling locally.");
-                        ui.label("Download: 'git clone https://github.com/alconley/sps_cebra.git'");
+                        ui.label("Download: 'git clone https://github.com/alconley/SPShub.git'");
                         ui.label("Run: 'cargo run --release'");
                     });
                 }
@@ -153,7 +171,7 @@ impl eframe::App for TemplateApp {
                     // Instructions for web users, as event builders are not available.
                     egui::Window::new("SPS Eventbuilder").show(ctx, |ui| {
                         ui.label("Event builders are only available when compiling locally.");
-                        ui.label("Download: 'git clone https://github.com/alconley/sps_cebra.git'");
+                        ui.label("Download: 'git clone https://github.com/alconley/SPShub.git'");
                         ui.label("Run: 'cargo run --release'");
                     });
                 }
@@ -166,6 +184,13 @@ impl eframe::App for TemplateApp {
                     });
 
                     // self.sps_plot_app.update(ctx, frame);
+                }
+
+                if self.plotter_app_visible {
+
+                    egui::Window::new("Plotter").show(ctx, |ui| {
+                        ui.label("Will be available soon. Hopefully lol");
+                    });
                 }
 
             } else {
@@ -182,6 +207,10 @@ impl eframe::App for TemplateApp {
 
                     if self.sps_plot_app_visible {
                         self.sps_plot_app.update(ctx, frame);
+                    }
+
+                    if self.plotter_app_visible {
+                        self.plotter_app.update(ctx, frame);
                     }
 
                 }

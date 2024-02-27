@@ -341,13 +341,13 @@ impl SPSPlotApp {
 
 impl App for SPSPlotApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        egui::Window::new("SPS Plot").show(ctx, |ui| {
+        egui::Window::new("SPS Plot").max_height(900.0).show(ctx, |ui| {
 
-            egui::TopBottomPanel::top("top_panel").show_inside(ui, |ui| {
+            egui::TopBottomPanel::top("sps_plot_top_panel").show_inside(ui, |ui| {
                 self.sps_settings_ui(ui);
             });
 
-            egui::TopBottomPanel::bottom("bottom_panel").show_inside(ui, |ui| {
+            egui::TopBottomPanel::bottom("sps_plot_bottom_panel").show_inside(ui, |ui| {
                 self.reaction_ui(ui);                
             
             });
