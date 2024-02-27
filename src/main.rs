@@ -21,7 +21,7 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "sps_cebra",
         native_options,
-        Box::new(|cc| Box::new(sps_cebra::TemplateApp::new(cc))),
+        Box::new(|cc| Box::new(SPShub::TemplateApp::new(cc))),
     )
 }
 
@@ -38,7 +38,7 @@ fn main() {
             .start(
                 "the_canvas_id", // hardcode it
                 web_options,
-                Box::new(|cc| Box::new(sps_cebra::TemplateApp::new(cc))),
+                Box::new(|cc| Box::new(SPShub::TemplateApp::new(cc))),
             )
             .await
             .expect("failed to start eframe");

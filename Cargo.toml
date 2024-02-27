@@ -1,5 +1,5 @@
 [package]
-name = "sps_cebra"
+name = "SPShub"
 version = "0.1.0"
 authors = ["Alex Conley <imaconley1@gmail.com>"]
 edition = "2021"

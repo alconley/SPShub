@@ -3,6 +3,34 @@
 version = 3
 
 [[package]]
+name = "SPShub"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.4.2",
+ "eframe",
+ "egui",
+ "egui_plot",
+ "env_logger",
+ "flate2",
+ "getrandom",
+ "log",
+ "nom",
+ "polars",
+ "rand",
+ "regex",
+ "reqwest",
+ "rfd",
+ "scraper",
+ "serde",
+ "serde_yaml",
+ "strum 0.26.1",
+ "strum_macros 0.26.1",
+ "tar",
+ "tokio",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "ab_glyph"
 version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3936,34 +3964,6 @@ checksum = "7b5fac59a5cb5dd637972e5fca70daf0523c9067fcdc4842f053dae04a18f8e9"
 dependencies = [
  "libc",
  "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "sps_cebra"
-version = "0.1.0"
-dependencies = [
- "bitflags 2.4.2",
- "eframe",
- "egui",
- "egui_plot",
- "env_logger",
- "flate2",
- "getrandom",
- "log",
- "nom",
- "polars",
- "rand",
- "regex",
- "reqwest",
- "rfd",
- "scraper",
- "serde",
- "serde_yaml",
- "strum 0.26.1",
- "strum_macros 0.26.1",
- "tar",
- "tokio",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
