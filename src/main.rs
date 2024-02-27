@@ -19,7 +19,7 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
     eframe::run_native(
-        "sps_cebra",
+        "SPShub",
         native_options,
         Box::new(|cc| Box::new(spshub::TemplateApp::new(cc))),
     )
