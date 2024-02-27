@@ -41,7 +41,7 @@ My goal is to have some of the apps online for easy access. This is still under 
 >
 > If `gh-pages` is not available in `Source`, just create and push a branch called `gh-pages` and it should be available.
 
-You can test the app at <https://alconley.github.io/sps_cebra/>.
+You can test the app at <https://alconley.github.io/SPShub/>.
 
 ## EventBuilders
 
