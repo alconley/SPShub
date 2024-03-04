@@ -393,7 +393,7 @@ impl EVBApp {
     }
 
     fn ui_tabs(&mut self, ui: &mut egui::Ui) {
-        egui::TopBottomPanel::top("top_panel").show_inside(ui, |ui| {
+        egui::TopBottomPanel::top("sps_cebra_top_panel").show_inside(ui, |ui| {
             ui.horizontal(|ui| {
                 if ui.selectable_label(matches!(self.active_tab, ActiveTab::MainTab), "Eventbuilder").clicked() {
                     self.active_tab = ActiveTab::MainTab;

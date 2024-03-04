@@ -1,3 +1,4 @@
+use egui::Vec2b;
 use log::info;
 
 use eframe::egui::{self, Color32};
@@ -11,48 +12,91 @@ use polars::prelude::*;
 
 use super::histogram_creation::add_histograms;
 use super::histogrammer::{Histogrammer, HistogramTypes};
+use super::cut::CutHandler;
+use super::workspace::Workspace;
+use super::lazyframer::LazyFramer;
+
+// Flags to keep track of the state of the app
+#[derive(serde::Deserialize, serde::Serialize)]
+struct PlotterAppFlags {
+    lazyframe_loaded: bool,
+    histograms_loaded: bool,
+    files_selected: bool,
+    cutter_save_to_one_file: bool,
+    cutter_save_to_separate_files: bool,
+    can_cut_lazyframe: bool,
+}
+
+impl Default for PlotterAppFlags {
+    fn default() -> Self {
+        Self {
+            lazyframe_loaded: false,
+            files_selected: false,
+            histograms_loaded: false,
+            cutter_save_to_one_file: false,
+            cutter_save_to_separate_files: false,
+            can_cut_lazyframe: false,
+        }
+    }
+}
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct PlotterApp {
-    files: Option<Vec<PathBuf>>,
+    workspace: Workspace,
     histogrammer: Histogrammer,
 
-    // skip the serialize
-    #[serde(skip)]
-    lazyframe: Option<LazyFrame>,
+    cut_handler: CutHandler,
+    selected_cut_id: Option<String>,
 
     #[serde(skip)]
-    lazyframe_columns: Vec<String>,
-
-    histograms_loaded: bool,
+    lazyframer: Option<LazyFramer>,
 
     #[serde(skip)]
     selected_histograms: Vec<String>,
+
+    flags: PlotterAppFlags,
+
 }
 
 impl PlotterApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
 
         Self {
-            files: None,
+            workspace: Workspace::new(),
             histogrammer: Histogrammer::new(),
-            lazyframe: None,
-            lazyframe_columns: Vec::new(),
-            histograms_loaded: false,
+            cut_handler: CutHandler::new(), // have to update column_names with the columns from the lazyframe
+            selected_cut_id: None,
+            lazyframer: None,
             selected_histograms: Vec::new(),
+            flags: PlotterAppFlags::default(),
         }
     }
 
-    fn create_lazyframe_from_files(&mut self) {
-        if let Some(files) = &self.files {
-            let files_arc: Arc<[PathBuf]> = Arc::from(files.clone());
-            let args = ScanArgsParquet::default();
+    fn create_lazyframe_from_selected_files(&mut self) {
 
+        log::info!("Creating LazyFrame from selected files");
+
+        if !self.workspace.selected_files.is_empty() {
+
+            let files_arc: Arc<[PathBuf]> = Arc::from(self.workspace.selected_files.clone());
+
+            let args = ScanArgsParquet::default();
+            log::info!("Files {:?}", files_arc);
             // Instead of using `?`, use a match or if let to handle the Result
             match LazyFrame::scan_parquet_files(files_arc, args) {
                 Ok(lf) => {
                     // Successfully loaded LazyFrame, do something with it
-                    self.lazyframe = Some(lf);
+                    // self.lazyframe = Some(lf);
+                    self.lazyframer = Some(LazyFramer::new(lf));
+                    self.flags.lazyframe_loaded = true;
+
+                    // Update CutHandler with column names from LazyFramer
+                    if let Some(ref lazyframer) = self.lazyframer {
+                        let column_names = lazyframer.get_column_names();
+                        self.cut_handler.update_column_names(column_names);
+
+                        log::info!("Column names: {:?}", self.cut_handler.column_names.clone());
+                    }
                 },
                 Err(e) => {
                     // Handle the error, e.g., log it
@@ -63,9 +107,8 @@ impl PlotterApp {
     }
 
     fn perform_histogrammer_from_lazyframe(&mut self) {
-        if let Some(lf) = &self.lazyframe {
-            // dont like the cloning here... figure out later
-            match add_histograms(lf.clone()) {
+        if let Some(lazyframer) = &self.lazyframer {
+            match add_histograms(lazyframer.get_lazyframe().clone()) { 
                 Ok(h) => {
                     self.histogrammer = h;
                 },
@@ -90,7 +133,7 @@ impl PlotterApp {
         self.histogrammer.histogram_list.get(name)
     }
 
-    pub fn render_selected_histograms(&mut self, ui: &mut egui::Ui) {
+    fn render_selected_histograms(&mut self, ui: &mut egui::Ui) {
         // Display a message if no histograms are selected.
         if self.selected_histograms.is_empty() {
             ui.label("No histogram selected");
@@ -104,7 +147,8 @@ impl PlotterApp {
             .allow_drag(false)
             .allow_zoom(false)
             .allow_boxed_zoom(true)
-            .allow_scroll(true);
+            .auto_bounds(Vec2b::new(true, true))
+            .allow_scroll(false);
 
         
         // Display the plot in the UI.
@@ -176,7 +220,12 @@ impl PlotterApp {
                         // ui.label(format!("Histogram '{}' not found or type not supported.", selected_name));
                     }
                 }
-            }            
+            }
+
+            if self.cut_handler.draw_flag {
+                self.cut_handler.draw_active_cut(plot_ui);
+            }
+
         });
     }
 
@@ -213,35 +262,133 @@ impl PlotterApp {
 
     }
 
-    fn file_ui(&mut self, ui: &mut egui::Ui) {
+    fn cutter_ui(&mut self, ui: &mut egui::Ui) {
 
-        egui::menu::bar(ui, |ui| {
+        ui.horizontal(|ui| {
+        
+            if ui.button("New Cut").clicked() {
+                self.cut_handler.add_new_cut();
+            }
 
-            if ui.button("Files").clicked() {
-                self.histograms_loaded = false;
+            ui.separator();
 
-                
-                if let Some(files) = rfd::FileDialog::new().add_filter("Parquet files", &["parquet"]).pick_files() {
-                        info!("Files: {:?}", files);
-                        self.files = Some(files);
+            // Button for saving filtered data to a single file
+            if ui.button("Save to One File").clicked() {
+                self.flags.cutter_save_to_one_file = true; // Set a flag to handle file dialog and saving outside UI code
+            }
+
+            // if the flag is set, show the file dialog and filter the data with cuts
+            if self.flags.cutter_save_to_one_file {
+
+                // Reset the flag immediately to prevent repeated triggers
+                self.flags.cutter_save_to_one_file = false;
+
+                // Ask user for output file path
+                if let Some(output_path) = rfd::FileDialog::new()
+                    .set_title("Save Reduced DataFrame to a Single File")
+                    .add_filter("Parquet file", &["parquet"])
+                    .save_file() {
+                    // Attempt to save the filtered data to one file
+                    if let Err(e) = self.cut_handler.filter_files_and_save_to_one_file(self.workspace.selected_files.clone(), &output_path) {
+                        eprintln!("Error saving to one file: {:?}", e);
+                    }
+                }
+            }
+
+            // Button for saving filtered data to separate files
+            if ui.button("Save Separately").clicked() {
+                self.flags.cutter_save_to_separate_files = true; // Set a flag to handle file dialog and saving outside UI code
+            }
+
+            if self.flags.cutter_save_to_separate_files {
+                // Reset the flag immediately to prevent repeated triggers
+                self.flags.cutter_save_to_separate_files = false;
+        
+                // Ask user for output directory
+                if let Some(output_dir) = rfd::FileDialog::new()
+                    .set_title("Select Directory to Save Each DataFrame Separately")
+                    .pick_folder() {
+                    // Prompt user for custom text to append to filenames
+                    let custom_text = "filtered"; // This could be dynamically set based on user input
+    
+                    // Attempt to save the filtered data to separate files
+                    if let Err(e) = self.cut_handler.filter_files_and_save_separately(self.workspace.selected_files.clone(), &output_dir, &custom_text.to_string()) {
+                        eprintln!("Error saving files separately: {:?}", e);
+                    }
                 }
             }
 
             ui.separator();
 
-            if ui.button("Calculate histograms").clicked() {
-                self.create_lazyframe_from_files();
+            // Check if lazyframer is Some, and use that to enable or disable the button
+            let lazyframer_is_some = self.lazyframer.is_some();
 
-                info!("Calculating histograms");
+            // Correctly using ui.add_enabled with a closure to create the button
+            ui.add_enabled_ui(lazyframer_is_some, |ui| {
+                if ui.button("Filter Data with Cuts").on_hover_text("CAUTION: This uses a lot of memory since it has to collect the lazyframe and create a boolean mask").clicked() {
+                    //check if lazyframer is Some, and use that to enable or disable the button
+                    if let Some(ref lazyframer) = self.lazyframer {
+                        // Now you have `lazyframer` which is a `&LazyFramer`, and you can call `get_lazyframe()` on it
+                        match self.cut_handler.filter_lf_with_all_cuts(&lazyframer.get_lazyframe()) {
+                            Ok(filtered_lf) => {
+                                // Update self.lazyframe with the filtered LazyFrame
+                                self.lazyframer = Some(LazyFramer::new(filtered_lf));
+                                self.flags.lazyframe_loaded = true;
 
-                self.perform_histogrammer_from_lazyframe();
-                self.histograms_loaded = true;
+                                self.perform_histogrammer_from_lazyframe();
+                            },
+                            Err(e) => {
+                                // Handle the error, e.g., log the error
+                                log::error!("Failed to filter LazyFrame with cuts: {}", e);
+                            }
+                        }
+                    }
+                }
+            });
 
-                info!("Finished caluclating histograms");
-            }
+            
 
         });
 
+        ui.separator();
+
+
+        // Iterate through all cuts to display selectable labels
+        egui::Grid::new("cut_selector_grid").show(ui, |ui| {
+            for (id, _cut) in self.cut_handler.cuts.iter_mut() {
+                // Create a selectable label for the cut
+                let is_selected = self.selected_cut_id.as_ref() == Some(id);
+                if ui.selectable_label(is_selected, format!("Cut: {}", id)).clicked() {
+                    // When a label is clicked, set this cut as the selected cut
+                    self.selected_cut_id = Some(id.clone());
+                    self.cut_handler.active_cut_id = Some(id.clone());
+                }
+            } 
+        }); 
+
+
+        // Display UI for the selected cut
+        if let Some(selected_id) = &self.selected_cut_id {
+            if let Some(selected_cut) = self.cut_handler.cuts.get_mut(selected_id) {
+
+                ui.label("Selected Cut:");
+                selected_cut.cut_ui(ui); // Display the `cut_ui` of the selected cut
+                
+                
+                ui.separator();
+
+                // check box to draw/edit the cut
+                ui.checkbox(&mut self.cut_handler.draw_flag, "Draw");
+                
+                ui.separator();
+
+                // button to remove cut
+                if ui.button("Remove Cut").clicked() {
+                    self.cut_handler.cuts.remove(selected_id);
+                    self.selected_cut_id = None;
+                }
+            }
+        }
     }
 
 }
@@ -249,13 +396,60 @@ impl PlotterApp {
 
 impl App for PlotterApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        egui::Window::new("Plotter").show(ctx, |ui| {
+
+        let mut size = ctx.screen_rect().size();
+        size.x -= 50.0; // Subtract 50 from the width
+        size.y -= 100.0; // Subtract 50 from the height
+
+        egui::Window::new("Plotter").max_size(size).show(ctx, |ui| {
 
             egui::TopBottomPanel::top("plotter_top_panel").show_inside(ui, |ui| {
 
-                self.file_ui(ui);
+                egui::menu::bar(ui, |ui| {
+
+                    ui.menu_button("Workspace", |ui| {
+
+                        self.workspace.select_directory_ui(ui);
+                        self.workspace.file_selection_settings_ui(ui);
+                        self.workspace.file_selection_ui_in_menu(ui);
+
+                    });
+
+                    ui.separator();
+
+                    ui.menu_button("Cut Handler", |ui| {
+
+                        self.cutter_ui(ui);
+
+                    });
+
+                    ui.separator();
+
+                    if ui.button("Calculate histograms").clicked() {
+                        self.flags.histograms_loaded = false;
+
+                        self.create_lazyframe_from_selected_files();
+        
+                        info!("Calculating histograms");
+        
+                        self.perform_histogrammer_from_lazyframe();
+                        self.flags.histograms_loaded = true;
+        
+                        info!("Finished caluclating histograms");
+                    }
+
+                });
+
 
             });
+
+
+            if self.workspace.file_selecton {
+                egui::SidePanel::left("plotter_left_panel").show_inside(ui, |ui| {
+                    self.workspace.file_selection_ui_side_panel(ui);
+                });
+            }
+
 
             egui::SidePanel::right("plotter_right_panel").show_inside(ui, |ui| {
 
@@ -263,16 +457,16 @@ impl App for PlotterApp {
 
             });
 
-
             // egui::TopBottomPanel::bottom("plotter_bottom_panel").show_inside(ui, |ui| {
-            //     // self.reaction_ui(ui);                
-            
+                
+            //     self.cut_handler_ui(ui);
+
             // });
 
             egui::CentralPanel::default().show_inside(ui, |ui| {
-                // self.plot(ui);
 
                 self.render_selected_histograms(ui);
+
             });
 
         });

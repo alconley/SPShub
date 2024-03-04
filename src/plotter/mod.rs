@@ -5,3 +5,5 @@ mod histogram2d;
 mod histogrammer;
 mod cut;
 mod histogram_creation;
+mod workspace;
+mod lazyframer;

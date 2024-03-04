@@ -13,18 +13,15 @@ use rfd::FileDialog;
 
 use geo::{Point, Polygon, LineString, algorithm::contains::Contains};
 
-// typical cut names for sps experiments
-const CUT_COLUMN_NAMES: &[&str] = &[
-    "AnodeBackEnergy", "AnodeFrontEnergy", "Cathode",
-     "ScintLeftEnergy", "Xavg", "X1", "X2"
-];
+use polars::prelude::*;
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct EditableEguiPolygon {
     pub vertices: Vec<[f64; 2]>,        // List of vertex coordinates
     selected_vertex_index: Option<usize>,  // Index of the selected vertex (if any)
     pub selected_x_column: Option<String>,
     pub selected_y_column: Option<String>,
+    pub column_names: Vec<String>,
 }
 
 impl EditableEguiPolygon {
@@ -33,12 +30,13 @@ impl EditableEguiPolygon {
     ///     Right click to add verticies 
     ///     Left click to remove verticies
     ///     Middle click to remove all verticies
-    pub fn new() -> Self {
+    pub fn new(column_names: Vec<String>) -> Self {
         Self {
-            vertices: Vec::new(),  // Initialize with an empty set of vertices
-            selected_vertex_index: None,  // Initially, no vertex is selected
+            vertices: Vec::new(),            // Initialize with an empty set of vertices
+            selected_vertex_index: None,     // Initially, no vertex is selected
             selected_x_column: None,
             selected_y_column: None,
+            column_names,                    // Initialize with the provided column names
         }
     }
 
@@ -46,7 +44,6 @@ impl EditableEguiPolygon {
         self.handle_mouse_interactions(plot_ui);   // Handle mouse interactions
         self.draw_vertices_and_polygon(plot_ui);   // Draw vertices and polygon
     }
-
 
     fn handle_mouse_interactions(&mut self, plot_ui: &mut PlotUi) {
         let response = plot_ui.response();
@@ -170,14 +167,15 @@ impl EditableEguiPolygon {
 
             // Y Column ComboBox
             egui::ComboBox::from_label("Y Column")
-            .selected_text(self.selected_y_column.as_deref().unwrap_or(""))
-            .show_ui(ui, |ui| {
-                for &column in CUT_COLUMN_NAMES.iter() {
-                    if ui.selectable_label(self.selected_y_column.as_deref() == Some(column), column).clicked() {
-                        self.selected_y_column = Some(column.to_string());
+                .selected_text(self.selected_y_column.as_deref().unwrap_or(""))
+                .show_ui(ui, |ui| {
+                    // Use self.column_names instead of CUT_COLUMN_NAMES
+                    for column in &self.column_names {
+                        if ui.selectable_label(self.selected_y_column.as_deref() == Some(column), column).clicked() {
+                            self.selected_y_column = Some(column.to_string());
+                        }
                     }
-                }
-            });
+                });
 
             ui.separator();
 
@@ -185,7 +183,8 @@ impl EditableEguiPolygon {
             egui::ComboBox::from_label("X Column")
                 .selected_text(self.selected_x_column.as_deref().unwrap_or(""))
                 .show_ui(ui, |ui| {
-                    for &column in CUT_COLUMN_NAMES.iter() {
+                    // Use self.column_names instead of CUT_COLUMN_NAMES
+                    for column in &self.column_names {
                         if ui.selectable_label(self.selected_x_column.as_deref() == Some(column), column).clicked() {
                             self.selected_x_column = Some(column.to_string());
                         }
@@ -212,6 +211,55 @@ impl EditableEguiPolygon {
             ui.separator();
 
         });
+    }
+
+    pub fn filter_lf_with_cut(&self, lf: &LazyFrame ) -> Result<LazyFrame, PolarsError> {
+    
+        // lots of clones... maybe there is a better way to do this
+    
+        let current_lf = lf.clone();
+
+        if let (Some(x_col_name), Some(y_col_name)) = (&self.selected_x_column, &self.selected_y_column) {
+            // get the min and max values for the x and y data points in the cuts
+            let x_min = self.vertices.iter().map(|&[x, _]| x).fold(f64::INFINITY, |a, b| a.min(b));
+            let x_max = self.vertices.iter().map(|&[x, _]| x).fold(f64::NEG_INFINITY, |a, b| a.max(b));
+            let y_min = self.vertices.iter().map(|&[_, y]| y).fold(f64::INFINITY, |a, b| a.min(b));
+            let y_max = self.vertices.iter().map(|&[_, y]| y).fold(f64::NEG_INFINITY, |a, b| a.max(b));
+        
+            let current_lf = current_lf
+                .filter(col(x_col_name).gt_eq(lit(x_min)))
+                .filter(col(x_col_name).lt_eq(lit(x_max)))
+                .filter(col(y_col_name).gt_eq(lit(y_min)))
+                .filter(col(y_col_name).lt_eq(lit(y_max)))                    
+                .filter(col(x_col_name).neq(lit(-1e6)))
+                .filter(col(y_col_name).neq(lit(-1e6)));
+
+                
+            let mask_creation_df = current_lf.clone().select([col(x_col_name), col(y_col_name)])
+                .collect()?;
+
+            let ndarray_mask_creation_df = mask_creation_df.to_ndarray::<Float64Type>(IndexOrder::Fortran)?;
+            let rows = ndarray_mask_creation_df.shape()[0];
+            let mut boolean_chunked_builder = BooleanChunkedBuilder::new("mask", rows);
+
+            for i in 0..rows {
+                let x_value = ndarray_mask_creation_df[[i, 0]];
+                let y_value = ndarray_mask_creation_df[[i, 1]];
+                let point = self.is_inside(x_value, y_value);
+                boolean_chunked_builder.append_value(point);
+            }
+
+            let boolean_chunked_series = boolean_chunked_builder.finish();
+            let filtered_df = current_lf.clone().collect()?;
+
+            let filtered_lf = filtered_df.filter(&boolean_chunked_series)?.lazy();
+
+            return Ok(filtered_lf);
+
+        }
+
+        Ok(current_lf)
+
     }
 
 }

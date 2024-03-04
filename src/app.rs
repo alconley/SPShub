@@ -25,6 +25,7 @@ pub struct TemplateApp {
     sps_plot_app: SPSPlotApp,
     sps_plot_app_visible: bool,
 
+    #[cfg(not(target_arch = "wasm32"))]
     plotter_app: PlotterApp,
     plotter_app_visible: bool,
 
@@ -155,7 +156,7 @@ impl eframe::App for TemplateApp {
                 egui::warn_if_debug_build(ui);
             });
 
-            // Use a clearer conditional statement to differentiate between web and non-web targets.
+            // conditional statement to differentiate between web and non-web targets.
             if cfg!(target_arch = "wasm32") {
 
                 if self.sps_cebra_evb_app_visible {
