@@ -78,7 +78,7 @@ fn calculate_z_offset(params: &KineParameters, nuc_map: &MassMap) -> Option<f64>
         None => return None
     };
 
-    println!("Target: {:?}", target);
+    // println!("Target: {:?}", target);
     let projectile = match nuc_map.get_data(&params.projectile_z, &params.projectile_a) {
         Some(data) => data,
         None => return None
@@ -121,5 +121,6 @@ pub fn calculate_weights(params: &KineParameters, nuc_map: &MassMap) -> Option<(
     };
     let w1 = 0.5 - z_offset/SPS_DETECTOR_WIRE_DIST;
     let w2 = 1.0 - w1;
+    // println!("Weights: {}, {}", w1, w2);
     Some((w1, w2))
 }

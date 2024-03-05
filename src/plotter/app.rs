@@ -22,6 +22,7 @@ struct PlotterAppFlags {
     lazyframe_loaded: bool,
     histograms_loaded: bool,
     files_selected: bool,
+    show_cutter: bool,
     cutter_save_to_one_file: bool,
     cutter_save_to_separate_files: bool,
     can_cut_lazyframe: bool,
@@ -33,6 +34,7 @@ impl Default for PlotterAppFlags {
             lazyframe_loaded: false,
             files_selected: false,
             histograms_loaded: false,
+            show_cutter: false,
             cutter_save_to_one_file: false,
             cutter_save_to_separate_files: false,
             can_cut_lazyframe: false,
@@ -148,7 +150,7 @@ impl PlotterApp {
             .allow_zoom(false)
             .allow_boxed_zoom(true)
             .auto_bounds(Vec2b::new(true, true))
-            .allow_scroll(false);
+            .allow_scroll(true);
 
         
         // Display the plot in the UI.
@@ -417,11 +419,8 @@ impl App for PlotterApp {
 
                     ui.separator();
 
-                    ui.menu_button("Cut Handler", |ui| {
-
-                        self.cutter_ui(ui);
-
-                    });
+                    // Checkbox to toggle the visibility of the cutter UI
+                    ui.checkbox(&mut self.flags.show_cutter, "Cut Handler");
 
                     ui.separator();
 
@@ -440,6 +439,15 @@ impl App for PlotterApp {
 
                 });
 
+                // ui.menu_button("Cut Handler", |ui| {
+
+                if self.flags.show_cutter {
+                    ui.separator();
+
+                    self.cutter_ui(ui);
+                }
+
+                // });
 
             });
 

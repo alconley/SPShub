@@ -42,7 +42,10 @@ impl Histogrammer {
         };
 
         // Attempt to collect the LazyFrame into a DataFrame
-        let df_result = lf.clone().select([col(column_name)]).collect();
+        let df_result = lf.clone()
+            .filter(col(column_name).neq(lit(-1e6)))  // Filter out the -1e6 values.
+            .select([col(column_name)])
+            .collect();
 
         // Handle the Result before proceeding
         match df_result {
