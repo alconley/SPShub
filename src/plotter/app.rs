@@ -506,8 +506,9 @@ impl App for PlotterApp {
 
 
             egui::TopBottomPanel::bottom("plotter_bottom_panel").show_inside(ui, |ui| {
-                
+
                 self.fitter.interactive_fitter(ui);
+
 
             });
 
