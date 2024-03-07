@@ -1,5 +1,5 @@
 
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Histogram {
     pub bins: Vec<u32>,
     pub range: (f64, f64),
@@ -104,4 +104,15 @@ impl Histogram {
         vec![integral_text, mean_text, stdev_text]
     }
 
+    // get the bin centers
+    pub fn bin_centers(&self) -> Vec<f64> {
+        let mut centers = Vec::new();
+        for (index, _) in self.bins.iter().enumerate() {
+            let center = self.range.0 + (index as f64 * self.bin_width) + (self.bin_width * 0.5);
+            centers.push(center);
+        }
+        centers
+    }
+
+    
 }

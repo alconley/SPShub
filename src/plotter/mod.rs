@@ -1,5 +1,6 @@
 pub mod app;
 mod egui_polygon;
+mod egui_markers;
 mod histogram1d;
 mod histogram2d;
 mod histogrammer;
