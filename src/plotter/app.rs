@@ -15,7 +15,7 @@ use super::histogrammer::{Histogrammer, HistogramTypes};
 use super::cut::CutHandler;
 use super::workspace::Workspace;
 use super::lazyframer::LazyFramer;
-use super::fitter::EguiFitMarkers;  
+use super::fitter::Fit;  
 
 // Flags to keep track of the state of the app
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -51,7 +51,7 @@ impl Default for PlotterAppFlags {
 pub struct PlotterApp {
     workspace: Workspace,
     histogrammer: Histogrammer,
-    fitter: EguiFitMarkers,
+    fitter: Fit,
 
     cut_handler: CutHandler,
     selected_cut_id: Option<String>,
@@ -72,7 +72,7 @@ impl PlotterApp {
         Self {
             workspace: Workspace::new(),
             histogrammer: Histogrammer::new(),
-            fitter: EguiFitMarkers::new(),
+            fitter: Fit::new(),
             cut_handler: CutHandler::new(), // have to update column_names with the columns from the lazyframe
             selected_cut_id: None,
             lazyframer: None,
@@ -148,6 +148,19 @@ impl PlotterApp {
         if self.selected_histograms.is_empty() {
             ui.label("No histogram selected");
             return;
+        }
+
+
+        // add the first histogram to the fitter
+        if let Some(selected_name) = self.selected_histograms.first() {
+            if let Some(histogram_type) = self.get_histogram_type(selected_name) {
+                match histogram_type {
+                    HistogramTypes::Hist1D(hist) => {
+                        self.fitter.histogram = Some(hist.clone());
+                    },
+                    _ => {}
+                }
+            }
         }
 
         // Set up the plot for the combined histogram display.
@@ -235,8 +248,11 @@ impl PlotterApp {
                 self.cut_handler.draw_active_cut(plot_ui);
             }
 
-            self.fitter.draw_markers(plot_ui);
-            self.fitter.cursor_position = plot_ui.pointer_coordinate()
+            self.fitter.markers.cursor_position = plot_ui.pointer_coordinate();
+            self.fitter.markers.draw_markers(plot_ui);
+            self.fitter.draw_fit_lines(plot_ui);
+
+
         });
     }
 
@@ -472,8 +488,6 @@ impl App for PlotterApp {
                     self.cut_handler.draw_flag = false;
                 }
 
-                // });
-
             });
 
 
@@ -493,7 +507,7 @@ impl App for PlotterApp {
 
             egui::TopBottomPanel::bottom("plotter_bottom_panel").show_inside(ui, |ui| {
                 
-                self.fitter.interactive_markers(ui);
+                self.fitter.interactive_fitter(ui);
 
             });
 
