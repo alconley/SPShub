@@ -103,7 +103,7 @@ impl EditableEguiPolygon {
         if !self.vertices.is_empty() {
             let color = Color32::RED;
             let plot_points = PlotPoints::new(self.vertices.clone());
-            let polygon_points = EguiPolygon::new(plot_points).fill_color(Color32::TRANSPARENT).stroke(Stroke::new(4.0, color));
+            let polygon_points = EguiPolygon::new(plot_points).fill_color(Color32::TRANSPARENT).stroke(Stroke::new(1.0, color));
             plot_ui.polygon(polygon_points); // Draw the polygon
 
             let vertices = Points::new(self.vertices.clone()).radius(5.0).color(color);

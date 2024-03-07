@@ -7,3 +7,4 @@ mod cut;
 mod histogram_creation;
 mod workspace;
 mod lazyframer;
+mod fitter;

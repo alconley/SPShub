@@ -15,6 +15,7 @@ use super::histogrammer::{Histogrammer, HistogramTypes};
 use super::cut::CutHandler;
 use super::workspace::Workspace;
 use super::lazyframer::LazyFramer;
+use super::fitter::EguiFitMarkers;  
 
 // Flags to keep track of the state of the app
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -23,8 +24,10 @@ struct PlotterAppFlags {
     histograms_loaded: bool,
     files_selected: bool,
     show_cutter: bool,
+    cutter_cuts_exist: bool,
     cutter_save_to_one_file: bool,
     cutter_save_to_separate_files: bool,
+    cutter_filter_lazyframe: bool,
     can_cut_lazyframe: bool,
 }
 
@@ -35,8 +38,10 @@ impl Default for PlotterAppFlags {
             files_selected: false,
             histograms_loaded: false,
             show_cutter: false,
+            cutter_cuts_exist: false,
             cutter_save_to_one_file: false,
             cutter_save_to_separate_files: false,
+            cutter_filter_lazyframe: false,
             can_cut_lazyframe: false,
         }
     }
@@ -46,6 +51,7 @@ impl Default for PlotterAppFlags {
 pub struct PlotterApp {
     workspace: Workspace,
     histogrammer: Histogrammer,
+    fitter: EguiFitMarkers,
 
     cut_handler: CutHandler,
     selected_cut_id: Option<String>,
@@ -66,6 +72,7 @@ impl PlotterApp {
         Self {
             workspace: Workspace::new(),
             histogrammer: Histogrammer::new(),
+            fitter: EguiFitMarkers::new(),
             cut_handler: CutHandler::new(), // have to update column_names with the columns from the lazyframe
             selected_cut_id: None,
             lazyframer: None,
@@ -136,6 +143,7 @@ impl PlotterApp {
     }
 
     fn render_selected_histograms(&mut self, ui: &mut egui::Ui) {
+                
         // Display a message if no histograms are selected.
         if self.selected_histograms.is_empty() {
             ui.label("No histogram selected");
@@ -152,10 +160,9 @@ impl PlotterApp {
             .auto_bounds(Vec2b::new(true, true))
             .allow_scroll(true);
 
-        
         // Display the plot in the UI.
         plot.show(ui, |plot_ui| {
-
+            
             // Define a set of colors for the histograms.
             let colors: [Color32; 5] = [
                 Color32::LIGHT_BLUE, 
@@ -228,6 +235,8 @@ impl PlotterApp {
                 self.cut_handler.draw_active_cut(plot_ui);
             }
 
+            self.fitter.draw_markers(plot_ui);
+            self.fitter.cursor_position = plot_ui.pointer_coordinate()
         });
     }
 
@@ -238,7 +247,6 @@ impl PlotterApp {
         let keys: Vec<String> = self.get_histogram_list(); // Retrieve the list of histogram names.
 
         // Layout for the buttons: top down and justified at the top.
-
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.with_layout(egui::Layout::top_down_justified(egui::Align::TOP), |ui| {
                 for name in keys {
@@ -322,33 +330,30 @@ impl PlotterApp {
 
             ui.separator();
 
-            // Check if lazyframer is Some, and use that to enable or disable the button
-            let lazyframer_is_some = self.lazyframer.is_some();
+            // filter the lazyframe with all cuts if the flag is triggered
+            if self.flags.cutter_filter_lazyframe {
 
-            // Correctly using ui.add_enabled with a closure to create the button
-            ui.add_enabled_ui(lazyframer_is_some, |ui| {
-                if ui.button("Filter Data with Cuts").on_hover_text("CAUTION: This uses a lot of memory since it has to collect the lazyframe and create a boolean mask").clicked() {
-                    //check if lazyframer is Some, and use that to enable or disable the button
-                    if let Some(ref lazyframer) = self.lazyframer {
-                        // Now you have `lazyframer` which is a `&LazyFramer`, and you can call `get_lazyframe()` on it
-                        match self.cut_handler.filter_lf_with_all_cuts(&lazyframer.get_lazyframe()) {
-                            Ok(filtered_lf) => {
-                                // Update self.lazyframe with the filtered LazyFrame
-                                self.lazyframer = Some(LazyFramer::new(filtered_lf));
-                                self.flags.lazyframe_loaded = true;
+                self.flags.cutter_filter_lazyframe = false;
 
-                                self.perform_histogrammer_from_lazyframe();
-                            },
-                            Err(e) => {
-                                // Handle the error, e.g., log the error
-                                log::error!("Failed to filter LazyFrame with cuts: {}", e);
-                            }
+                //check if lazyframer is Some, and use that to enable or disable the button
+                if let Some(ref lazyframer) = self.lazyframer {
+                    // Now you have `lazyframer` which is a `&LazyFramer`, and you can call `get_lazyframe()` on it
+                    match self.cut_handler.filter_lf_with_all_cuts(&lazyframer.get_lazyframe()) {
+                        Ok(filtered_lf) => {
+                            // Update self.lazyframe with the filtered LazyFrame
+                            self.lazyframer = Some(LazyFramer::new(filtered_lf));
+                            self.flags.lazyframe_loaded = true;
+
+                            self.perform_histogrammer_from_lazyframe();
+                        },
+                        Err(e) => {
+                            // Handle the error, e.g., log the error
+                            log::error!("Failed to filter LazyFrame with cuts: {}", e);
                         }
                     }
                 }
-            });
 
-            
+            }
 
         });
 
@@ -405,9 +410,19 @@ impl App for PlotterApp {
 
         egui::Window::new("Plotter").max_size(size).show(ctx, |ui| {
 
+
             egui::TopBottomPanel::top("plotter_top_panel").show_inside(ui, |ui| {
 
                 egui::menu::bar(ui, |ui| {
+
+                    ui.menu_button("Status", |ui| {
+                        ui.label(format!("LazyFrame loaded: {}", self.flags.lazyframe_loaded));
+                        ui.label(format!("Histograms loaded: {}", self.flags.histograms_loaded));
+                        ui.label(format!("Files selected: {}", self.workspace.selected_files.len()));
+                        ui.label(format!("Show Cutter: {}", self.flags.show_cutter));
+                    });
+
+                    ui.separator();
 
                     ui.menu_button("Workspace", |ui| {
 
@@ -417,10 +432,6 @@ impl App for PlotterApp {
 
                     });
 
-                    ui.separator();
-
-                    // Checkbox to toggle the visibility of the cutter UI
-                    ui.checkbox(&mut self.flags.show_cutter, "Cut Handler");
 
                     ui.separator();
 
@@ -437,14 +448,28 @@ impl App for PlotterApp {
                         info!("Finished caluclating histograms");
                     }
 
+
+                    ui.separator();
+
+                    // Checkbox to toggle the visibility of the cutter UI
+                    ui.checkbox(&mut self.flags.show_cutter, "Cut Handler");
+
+                    if self.flags.show_cutter {
+                        if ui.button("Filter LazyFrame").clicked() {
+                            self.flags.cutter_filter_lazyframe = true;
+                        }
+                    }
+
+                    
+
                 });
 
-                // ui.menu_button("Cut Handler", |ui| {
 
                 if self.flags.show_cutter {
                     ui.separator();
-
                     self.cutter_ui(ui);
+                } else {
+                    self.cut_handler.draw_flag = false;
                 }
 
                 // });
@@ -458,23 +483,23 @@ impl App for PlotterApp {
                 });
             }
 
-
             egui::SidePanel::right("plotter_right_panel").show_inside(ui, |ui| {
 
                 self.histogram_buttons_ui(ui);
 
             });
 
-            // egui::TopBottomPanel::bottom("plotter_bottom_panel").show_inside(ui, |ui| {
-                
-            //     self.cut_handler_ui(ui);
 
-            // });
+
+            egui::TopBottomPanel::bottom("plotter_bottom_panel").show_inside(ui, |ui| {
+                
+                self.fitter.interactive_markers(ui);
+
+            });
 
             egui::CentralPanel::default().show_inside(ui, |ui| {
 
                 self.render_selected_histograms(ui);
-
             });
 
         });
