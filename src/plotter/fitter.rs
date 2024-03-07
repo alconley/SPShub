@@ -319,6 +319,7 @@ impl Fit {
 
             if ui.button("Region").on_hover_text("Clear all region markers").clicked() {
                 self.markers.clear_region_markers();
+            }
 
             ui.separator();
 
@@ -330,6 +331,7 @@ impl Fit {
                 self.clear_fit_line();
             }
         });
+
     }
 
     // draw fit lines
