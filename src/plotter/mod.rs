@@ -1,6 +1,5 @@
 pub mod app;
 mod egui_polygon;
-mod egui_markers;
 mod histogram1d;
 mod histogram2d;
 mod histogrammer;
@@ -8,4 +7,4 @@ mod cut;
 mod histogram_creation;
 mod workspace;
 mod lazyframer;
-mod fitter;
+mod fit;

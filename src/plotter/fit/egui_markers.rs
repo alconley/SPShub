@@ -1,13 +1,11 @@
 use egui_plot::{VLine, PlotUi, PlotPoint};
 use egui::{Color32, Stroke};
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct EguiFitMarkers {
     pub region_markers: Vec<f64>,
     pub peak_markers: Vec<f64>,
     pub background_markers: Vec<f64>,
 
-    #[serde(skip)]
     pub cursor_position: Option<PlotPoint>,
 }
 
@@ -36,7 +34,7 @@ impl EguiFitMarkers {
     
     pub fn draw_region_markers(&mut self, plot_ui: &mut PlotUi) {
         for x in &self.region_markers {
-            let color = Color32::from_rgb(255, 0, 255);
+            let color = Color32::BLUE;
             let line = VLine::new(*x).color(color).stroke(Stroke::new(1.0, color));
 
             plot_ui.vline(line);
@@ -58,7 +56,7 @@ impl EguiFitMarkers {
 
     pub fn draw_peak_markers(&mut self, plot_ui: &mut PlotUi) {
         for x in &self.peak_markers {
-            let color = Color32::BLUE;
+            let color = Color32::from_rgb(255, 0, 255);
             let line = VLine::new(*x).color(color).stroke(Stroke::new(1.0, color));
 
             plot_ui.vline(line);

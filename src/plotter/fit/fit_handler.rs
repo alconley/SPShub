@@ -3,47 +3,44 @@ use egui_plot::{Line, PlotUi, PlotPoint, PlotPoints};
 use egui::{Color32, Stroke};
 
 use super::egui_markers::EguiFitMarkers;
-use super::histogram1d::Histogram;
+use super::gaussian_fitter::GaussianFitter;
+use super::background_fitter::BackgroundFitter;
+
+use crate::plotter::histogram1d::Histogram;
 
 use nalgebra::DVector;
-use varpro::prelude::*;
-use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
 
-
-fn gaussian(x: &DVector<f64>, mean: f64, std_dev: f64) -> DVector<f64> {
-    x.map(|x_val| (-((x_val - mean).powi(2)) / (2.0 * std_dev.powi(2))).exp())
+pub struct FitHandler {
+    pub fits: Vec<Fit>
 }
 
-fn gaussian_pd_mean(x: &DVector<f64>, mean: f64, std_dev: f64) -> DVector<f64> {
-    x.map(|x_val| (x_val - mean) / std_dev.powi(2) * (-((x_val - mean).powi(2)) / (2.0 * std_dev.powi(2))).exp())
+impl FitHandler {
+    pub fn new() -> Self {
+        Self {
+            fits: Vec::new()
+        }
+    }
 }
 
-fn gaussian_pd_std_dev(x: &DVector<f64>, mean: f64, std_dev: f64) -> DVector<f64> {
-    x.map(|x_val| {
-        let exponent = -((x_val - mean).powi(2)) / (2.0 * std_dev.powi(2));
-        (x_val - mean).powi(2) / std_dev.powi(3) * exponent.exp()
-    })
-}
-
-#[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct Fit {
-    pub histogram: Option<Histogram>,
+    pub histogram: Histogram,
     pub markers: EguiFitMarkers,
-    pub background_line: Option<(f64, f64)>, // (slope, intercept)
-    pub fit_line: Option<(f64, f64, f64)>, // (amplitude, mean, std_dev)
 }
 
 impl Fit {
-    pub fn new() -> Self {
+    pub fn new(histogram: Histogram, markers: EguiFitMarkers) -> Self {
         Self {
-            histogram: None,
-            markers: EguiFitMarkers::new(),
-            background_line: None,
-            fit_line: None 
+            histogram,
+            markers,
         }
-    }
 
-    // Background
+        
+    }
+}
+
+
+
+/* 
     pub fn get_background_marker_data(&self) -> Vec<(f64, f64)> {
 
         if self.markers.background_markers.len() < 2 {
@@ -171,7 +168,7 @@ impl Fit {
 
     pub fn fit_gaussian(&mut self) {
 
-        self.fit_line = None;
+        self.fit_line = Vec::new();
         
         let fit_region = self.markers.region_markers.clone();
 
@@ -213,7 +210,6 @@ impl Fit {
                 bin_data.push((bin_center, count));
             }
 
-            
             // Create DVector for x and y data for varpro fitting
             let x: DVector<f64> = DVector::from_column_slice(&bin_data.iter().map(|(x, _)| *x).collect::<Vec<f64>>());
             let y: DVector<f64> = DVector::from_column_slice(&bin_data.iter().map(|(_, y)| *y as f64).collect::<Vec<f64>>());
@@ -224,52 +220,20 @@ impl Fit {
                 return;
             }
 
-            let max: f64 = y.max();
-            let max_index: usize = y.iter().position(|&x| x == max).unwrap();
-    
-            let mean: f64 = x[max_index];
-            let std_dev: f64 = 1.0;
-    
-            let initial_guess = vec![mean, std_dev];
-    
-            let model = SeparableModelBuilder::<f64>::new(&["mean", "std_dev"])
-                .initial_parameters(initial_guess)
-                .independent_variable(x)
-                .function(&["mean", "std_dev"],gaussian)
-                .partial_deriv("mean", gaussian_pd_mean)
-                .partial_deriv("std_dev", gaussian_pd_std_dev)
-                .build()
-                .unwrap();
-    
-            let problem = LevMarProblemBuilder::new(model)
-                .observations(y)
-                .build()
-                .unwrap();
-    
-            // fit the data
-            let fit_result = LevMarSolver::default()
-                            .fit(problem)
-                            .expect("fit must succeed");
-    
-            // the nonlinear parameters
-            let alpha = fit_result.nonlinear_parameters();
-            // the linear coefficients
-            let c  = fit_result.linear_coefficients().unwrap();
-    
-            log::info!("Fitted Gaussian: mean: {}, std_dev: {}", alpha[0], alpha[1]);
-            log::info!("Linear coefficients: {:?}", c);
-    
-            self.fit_line = Some((c[0], alpha[0], alpha[1]));
+            let fitter = GaussianFitter::new(x, y, self.markers.peak_markers.clone());
+            self.fit_line.append(&mut fitter.multi_gauss_fit());
 
         }
 
     }
 
     pub fn draw_fit(&self, plot_ui: &mut PlotUi) {
-        if let Some((amplitude, mean, std_dev)) = self.fit_line {
+        for (index, (amplitude, mean, std_dev)) in self.fit_line.iter().enumerate() {
             let num_points = 100;
-            let start = self.markers.region_markers.iter().cloned().fold(f64::INFINITY, f64::min);
-            let end = self.markers.region_markers.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    
+            // Adjust start and end to be 4 sigma from the mean
+            let start = mean - 5.0 * std_dev;
+            let end = mean + 5.0 * std_dev;
             let step = (end - start) / num_points as f64;
     
             let plot_points: Vec<PlotPoint> = (0..=num_points).map(|i| {
@@ -278,17 +242,19 @@ impl Fit {
                 PlotPoint::new(x, y)
             }).collect();
     
+            let fit_name = format!("Fit {}", index); // Generate a name for each fit line
+    
             let line = Line::new(PlotPoints::Owned(plot_points))
                 .color(Color32::RED)
                 .stroke(Stroke::new(2.0, Color32::RED))
-                .name("Gaussian Fit");
+                .name(&fit_name); // Use the generated name here
     
             plot_ui.line(line);
         }
     }
-
+    
     pub fn clear_fit_line(&mut self) {
-        self.fit_line = None;
+        self.fit_line = Vec::new();
     }
 
     pub fn interactive_fitter(&mut self, ui: &mut egui::Ui) {
@@ -334,14 +300,12 @@ impl Fit {
 
     }
 
-    // draw fit lines
     pub fn draw_fit_lines(&mut self, plot_ui: &mut PlotUi) {
         self.draw_background_line(plot_ui);
         self.draw_fit(plot_ui);
     }
 
 }
-
 
 pub fn simple_linear_regression(x_data: &[f64], y_data: &[f64]) -> Result<(f64, f64), &'static str> {
 
@@ -366,45 +330,7 @@ pub fn simple_linear_regression(x_data: &[f64], y_data: &[f64]) -> Result<(f64, 
     Ok((slope, intercept))
 }
 
-    /* 
-pub struct GaussianFitter {
-    number_of_peaks: usize,
-    same_std_dev: bool,
-    hold_peak_positions: bool,
-    hold_peak_widths: bool,
-    x: DVector<f64>,
-    y: DVector<f64>,
-}
 
-impl GaussianFitter {
-    pub fn new(x: DVector<f64>, y: DVector<f64>) -> Self {
-        Self {
-            number_of_peaks: 1,
-            same_std_dev: true,
-            hold_peak_positions: false,
-            hold_peak_widths: false,
-            x,
-            y,
-        }
-    }
 
-    fn gaussian(x: &DVector<f64>, mean: f64, std_dev: f64) -> DVector<f64> {
-        x.map(|x_val| (-((x_val - mean).powi(2)) / (2.0 * std_dev.powi(2))).exp())
-    }
-    
-    fn gaussian_pd_mean(x: &DVector<f64>, mean: f64, std_dev: f64) -> DVector<f64> {
-        x.map(|x_val| (x_val - mean) / std_dev.powi(2) * (-((x_val - mean).powi(2)) / (2.0 * std_dev.powi(2))).exp())
-    }
-    
-    fn gaussian_pd_std_dev(x: &DVector<f64>, mean: f64, std_dev: f64) -> DVector<f64> {
-        x.map(|x_val| {
-            let exponent = -((x_val - mean).powi(2)) / (2.0 * std_dev.powi(2));
-            (x_val - mean).powi(2) / std_dev.powi(3) * exponent.exp()
-        })
-    }
 
-    pub fn set_number_of_peaks(&mut self, number_of_peaks: usize) {
-        self.number_of_peaks = number_of_peaks;
-    }
-
-}*/
+*/

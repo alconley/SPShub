@@ -15,7 +15,7 @@ use super::histogrammer::{Histogrammer, HistogramTypes};
 use super::cut::CutHandler;
 use super::workspace::Workspace;
 use super::lazyframer::LazyFramer;
-use super::fitter::Fit;  
+use super::fit::fit_handler::FitHandler;  
 
 // Flags to keep track of the state of the app
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -51,7 +51,7 @@ impl Default for PlotterAppFlags {
 pub struct PlotterApp {
     workspace: Workspace,
     histogrammer: Histogrammer,
-    fitter: Fit,
+    fitter: FitHandler,
 
     cut_handler: CutHandler,
     selected_cut_id: Option<String>,
@@ -72,7 +72,7 @@ impl PlotterApp {
         Self {
             workspace: Workspace::new(),
             histogrammer: Histogrammer::new(),
-            fitter: Fit::new(),
+            fitter: FitHandler::new(),
             cut_handler: CutHandler::new(), // have to update column_names with the columns from the lazyframe
             selected_cut_id: None,
             lazyframer: None,
