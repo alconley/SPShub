@@ -51,6 +51,8 @@ impl Default for PlotterAppFlags {
 pub struct PlotterApp {
     workspace: Workspace,
     histogrammer: Histogrammer,
+
+    #[serde(skip)]
     fitter: FitHandler,
 
     cut_handler: CutHandler,
@@ -150,8 +152,8 @@ impl PlotterApp {
             return;
         }
 
-
         // add the first histogram to the fitter
+        // requiring that it is a 1d histogram
         if let Some(selected_name) = self.selected_histograms.first() {
             if let Some(histogram_type) = self.get_histogram_type(selected_name) {
                 match histogram_type {
@@ -250,7 +252,9 @@ impl PlotterApp {
 
             self.fitter.markers.cursor_position = plot_ui.pointer_coordinate();
             self.fitter.markers.draw_markers(plot_ui);
-            self.fitter.draw_fit_lines(plot_ui);
+            self.fitter.draw_fits(plot_ui);
+
+            // self.fitter.draw_fit_lines(plot_ui);
 
 
         });
@@ -448,7 +452,6 @@ impl App for PlotterApp {
 
                     });
 
-
                     ui.separator();
 
                     if ui.button("Calculate histograms").clicked() {
@@ -464,7 +467,6 @@ impl App for PlotterApp {
                         info!("Finished caluclating histograms");
                     }
 
-
                     ui.separator();
 
                     // Checkbox to toggle the visibility of the cutter UI
@@ -476,10 +478,7 @@ impl App for PlotterApp {
                         }
                     }
 
-                    
-
                 });
-
 
                 if self.flags.show_cutter {
                     ui.separator();
@@ -503,12 +502,9 @@ impl App for PlotterApp {
 
             });
 
-
-
             egui::TopBottomPanel::bottom("plotter_bottom_panel").show_inside(ui, |ui| {
 
-                self.fitter.interactive_fitter(ui);
-
+                self.fitter.interactive_keybinds(ui);
 
             });
 

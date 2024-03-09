@@ -1,5 +1,6 @@
+use egui_plot::PlotUi;
 
-use egui_plot::{Line, PlotUi, PlotPoint, PlotPoints};
+use egui_plot::{Line, PlotPoint, PlotPoints};
 use egui::{Color32, Stroke};
 
 use super::egui_markers::EguiFitMarkers;
@@ -8,23 +9,104 @@ use super::background_fitter::BackgroundFitter;
 
 use crate::plotter::histogram1d::Histogram;
 
-use nalgebra::DVector;
-
+#[derive(Default)]
 pub struct FitHandler {
-    pub fits: Vec<Fit>
+    pub histogram: Option<Histogram>,
+    pub fits: Vec<Fit>,
+    pub current_fit: Option<Fit>,
+    pub markers: EguiFitMarkers,
 }
 
 impl FitHandler {
     pub fn new() -> Self {
         Self {
-            fits: Vec::new()
+            histogram: None,
+            fits: Vec::new(),
+            current_fit: None,
+            markers: EguiFitMarkers::new(),
         }
     }
+
+    pub fn interactive_keybinds(&mut self, ui: &mut egui::Ui) {
+
+        if ui.input(|i| i.key_pressed(egui::Key::Minus)) {
+
+            if let Some(fit) = &mut self.current_fit {
+                fit.clear();
+            }
+
+            self.markers.delete_closest_marker();
+        }
+        
+        self.markers.interactive_markers(ui);
+
+        if ui.input(|i| i.key_pressed(egui::Key::F)) {
+            if let Some(histogram) = self.histogram.clone() {
+                self.new_fit(histogram);
+            } else {
+                eprintln!("No histogram selected for fitting.");
+            }
+        }
+
+        if ui.input(|i| i.key_pressed(egui::Key::S)) {
+            self.store_fit();
+        }
+
+        if ui.input(|i| i.key_pressed(egui::Key::Backspace)) {
+
+            if let Some(fit) = &mut self.current_fit {
+                fit.clear();
+            }
+
+            self.markers.clear_background_markers();
+            self.markers.clear_peak_markers();
+            self.markers.clear_region_markers();
+
+        }
+        
+    }
+
+
+    fn new_fit(&mut self, histogram: Histogram) {
+        let mut fit = Fit::new(histogram, self.markers.clone());
+
+        if let Err(e) = fit.fit_gaussian() {
+            eprintln!("Failed to fit gaussian: {}", e);
+        }
+
+        self.markers = fit.markers.clone(); // update the makers with the fit markers
+        self.current_fit = Some(fit);
+
+    }
+
+    fn store_fit(&mut self) {
+        if let Some(fit) = self.current_fit.take() {
+            self.fits.push(fit);
+        }
+    }
+
+    pub fn draw_fits(&mut self, plot_ui: &mut PlotUi) {
+        
+        // draw the current fit
+        if let Some(fit) = &mut self.current_fit {
+            fit.draw(plot_ui, Color32::BLUE);
+        }
+
+        // draw the stored fits
+        for fit in &mut self.fits {
+            let color = Color32::from_rgb(162, 0, 255);
+            fit.draw(plot_ui, color);
+        }
+    }
+
+
 }
 
 pub struct Fit {
-    pub histogram: Histogram,
-    pub markers: EguiFitMarkers,
+    histogram: Histogram,
+    markers: EguiFitMarkers,
+    fit: Option<GaussianFitter>,
+    background: Option<BackgroundFitter>,
 }
 
 impl Fit {
@@ -32,305 +114,146 @@ impl Fit {
         Self {
             histogram,
             markers,
+            fit: None,
+            background: None,
         }
-
-        
     }
-}
 
+    fn get_background_marker_data(&self) -> (Vec<f64>, Vec<f64>) {
 
+        let bg_markers = self.markers.background_markers.clone();
 
-/* 
-    pub fn get_background_marker_data(&self) -> Vec<(f64, f64)> {
+        let mut y_values = Vec::new();
+        let mut x_values = Vec::new();
 
-        if self.markers.background_markers.len() < 2 {
-            log::info!("There are less than 2 background markers. Cannot generate background marker data.");
-            return Vec::new();
-        }
-
-        let mut points = Vec::new();
-        
-        if let Some(histogram) = &self.histogram {
-            log::debug!("Histogram is set, processing background markers.");
-            for &x in &self.markers.background_markers {
-                match histogram.get_bin(x) {
-                    Some(bin_index) if bin_index < histogram.bins.len() => {
-                        let y = histogram.bins[bin_index] as f64;
-                        points.push((x, y));
-                        log::trace!("Added point: ({}, {}) for bin index: {}", x, y, bin_index);
-                    },
-                    Some(bin_index) => {
-                        // Bin index is out of bounds, which shouldn't normally happen
-                        log::warn!("Bin index {} is out of bounds for background marker at x = {}. Ignoring this marker.", bin_index, x);
-                    },
-                    None => {
-                        // x value doesn't correspond to a valid bin; it might be outside the histogram's range
-                        log::warn!("No bin found for background marker at x = {}. This marker is outside the histogram's range.", x);
-                    }
-                }
+        for x in bg_markers {
+            // get the bin index
+            if let Some(bin_index) = self.histogram.get_bin(x) {
+                let bin_center = self.histogram.range.0 + (bin_index as f64 * self.histogram.bin_width) + (self.histogram.bin_width * 0.5);
+                x_values.push(bin_center);
+                y_values.push(self.histogram.bins[bin_index] as f64);
             }
-        } else {
-            log::info!("No histogram set. Cannot process background markers.");
+
         }
 
-        if points.is_empty() {
-            log::info!("No background marker data was generated.");
-        } else {
-            log::debug!("Generated background marker data for {} points.", points.len());
-        }
-
-        points
+        (x_values, y_values)
     }
 
-    pub fn perform_linear_fit_for_background(&mut self) -> Result<(), &'static str> {
-        let background_marker_data = self.get_background_marker_data();
-        if background_marker_data.is_empty() {
-            return Err("No background markers set, cannot perform linear fit.");
-        }
+    fn fit_background(&mut self) -> Result<(), &'static str> {
+        let (x_values, y_values) = self.get_background_marker_data();
 
-        let (x_values, y_values): (Vec<f64>, Vec<f64>) = background_marker_data.iter().cloned().unzip();
+        // Initialize BackgroundFitter with the obtained x and y values
+        let mut background_fitter = BackgroundFitter::new(x_values, y_values);
 
-        match simple_linear_regression(&x_values, &y_values) {
-            Ok((slope, intercept)) => {
-                // Store the slope and intercept in self.background_line
-                self.background_line = Some((slope, intercept));
+        // Perform the fit and calculate background line points
+        background_fitter.fit()?;
 
-                // Optionally, log the slope and intercept for debugging purposes
-                log::info!("Background Fit (linear): slope: {}, intercept: {}", slope, intercept);
+        // Update the background property with the fitted background_fitter
+        self.background = Some(background_fitter);
 
-                Ok(())
-            },
-            Err(e) => Err(e),
-        }
-    }
-    
-    pub fn draw_background_line(&mut self, plot_ui: &mut PlotUi) {
-        if let Some((slope, intercept)) = self.background_line {
-            // Ensure there are background markers before proceeding
-            if self.markers.background_markers.is_empty() {
-                return;
-            }
-    
-            // Find the minimum and maximum x-values among the background markers
-            let min_x = self.markers.background_markers.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-            let max_x = self.markers.background_markers.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-    
-            // Calculate the y-values for the line at these x-values
-            let y1 = slope * min_x + intercept;
-            let y2 = slope * max_x + intercept;
-    
-            // Create a vector of PlotPoints for the line between these points
-            let plot_points = PlotPoints::Owned(vec![
-                PlotPoint::new(min_x, y1),
-                PlotPoint::new(max_x, y2),
-            ]);
-    
-            // Define the line's appearance
-            let color = Color32::GREEN;
-            let line = Line::new(plot_points)
-                .color(color)
-                .stroke(Stroke::new(1.0, color));
-    
-            // Draw the line on the plot
-            plot_ui.line(line);
-        }
+        Ok(())
     }
 
-    pub fn clear_background_line(&mut self) {
-        self.background_line = None;
-    }
+    fn create_background_subtracted_histogram(&self) -> Result<Histogram, &'static str> {
 
-    pub fn create_background_subtracted_histogram(&mut self) -> Result<Histogram, &'static str> {
-        if self.background_line.is_none() {
-            return Err("Background line has not been calculated.");
-        }
-        
-        let (slope, intercept) = self.background_line.unwrap();
+        if let Some(background_fitter) = &self.background {
+            let (slope, intercept) = background_fitter.background_params.ok_or("Background parameters not set.")?;
 
-        // Ensure there's a histogram to subtract the background from
-        if let Some(ref histogram) = self.histogram {
-            let mut subtracted_histogram = histogram.clone(); // Clone the original histogram structure
+            let mut subtracted_histogram = self.histogram.clone();
 
-            // Iterate through each bin in the histogram
+            // Subtract background estimate from each bin
             for (index, bin_count) in subtracted_histogram.bins.iter_mut().enumerate() {
-                let bin_center = histogram.range.0 + (histogram.bin_width * index as f64) + (histogram.bin_width / 2.0);
-                let background_estimate = slope * bin_center + intercept; // Calculate background count estimate for this bin
-                
-                // Subtract the background estimate from the bin count, ensuring it doesn't go below 0
-                *bin_count = bin_count.saturating_sub(background_estimate as u32);
+                let bin_center = self.histogram.range.0 + (self.histogram.bin_width * index as f64) + (self.histogram.bin_width / 2.0);
+                let background_estimate = slope * bin_center + intercept;
+                *bin_count = bin_count.saturating_sub(background_estimate.round() as u32);
             }
 
-            Ok(subtracted_histogram) // Return the background-subtracted histogram
+            Ok(subtracted_histogram)
+
         } else {
-            Err("No histogram data available for background subtraction.")
+            Err("No background fitter available for background subtraction.")
         }
     }
 
-    pub fn fit_gaussian(&mut self) {
+    fn fit_gaussian(&mut self) -> Result<(), &'static str> {
 
-        self.fit_line = Vec::new();
-        
-        let fit_region = self.markers.region_markers.clone();
-
-        // Ensure we have exactly two region markers to define a fit region
-        if fit_region.len() != 2 {
-            log::error!("Need two region markers to define a fit region.");
-            return;
+        // Ensure there are exactly two region markers to define a fit region
+        if self.markers.region_markers.len() != 2 {
+            return Err("Need two region markers to define a fit region.");
         }
 
-        // Ensure there are background markers; if not, use the region markers as defaults
+        // remove peak markers that are outside the region markers
+        self.markers.remove_peak_markers_outside_region();
+
+        // if there are no background markers, use the region markers as defaults
         if self.markers.background_markers.is_empty() {
-            self.markers.background_markers.push(fit_region[0]);
-            self.markers.background_markers.push(fit_region[1]);
+            self.markers.background_markers.push(self.markers.region_markers[0]);
+            self.markers.background_markers.push(self.markers.region_markers[1]);
         }
 
-        // Attempt to perform background subtraction and linear fit
-        if let Err(e) = self.perform_linear_fit_for_background() {
-            log::error!("Failed to perform linear fit for background: {}", e);
-            return;
+        // fit the background
+        let _ = self.fit_background();
+
+        // Ensure background subtraction has been performed
+        let bg_subtracted_histogram = self.create_background_subtracted_histogram()?;
+
+        // Extract x and y data between region markers
+        let start_bin = bg_subtracted_histogram.get_bin(self.markers.region_markers[0]).unwrap_or(0);
+        let end_bin = bg_subtracted_histogram.get_bin(self.markers.region_markers[1]).unwrap_or(bg_subtracted_histogram.bins.len() - 1);
+
+        let mut x_data = Vec::new();
+        let mut y_data = Vec::new();
+
+        for bin_index in start_bin..=end_bin {
+            let bin_center = bg_subtracted_histogram.range.0 + (bg_subtracted_histogram.bin_width * bin_index as f64) + (bg_subtracted_histogram.bin_width / 2.0);
+            let bin_count = bg_subtracted_histogram.bins[bin_index];
+            x_data.push(bin_center);
+            y_data.push(bin_count as f64);
         }
 
-        if let Ok(bg_sub_histogram) = self.create_background_subtracted_histogram() { 
+        // Initialize GaussianFitter with x and y data
+        let mut gaussian_fitter = GaussianFitter::new(x_data, y_data, self.markers.peak_markers.clone());
 
-            // Get bin indices from region markers
-            let start_bin = bg_sub_histogram.get_bin(fit_region[0]).unwrap_or(0);
-            let end_bin = bg_sub_histogram.get_bin(fit_region[1]).unwrap_or(bg_sub_histogram.bins.len() - 1);
+        // Perform Gaussian fit
+        gaussian_fitter.multi_gauss_fit();
 
-            // Vector to store (bin_center, count) pairs
-            let mut bin_data: Vec<(f64, u32)> = Vec::new();
+        // get the decomposition fit lines
+        gaussian_fitter.get_fit_decomposition_line_points();
 
-            // Iterate over the range of bins
-            for bin_index in start_bin..=end_bin {
-                // Get the center of each bin
-                let bin_center = bg_sub_histogram.bin_centers()[bin_index];
-                
-                // Get the count for each bin
-                let count = bg_sub_histogram.bins[bin_index];
+        // update peak markers with the fitted peak markers
+        self.markers.peak_markers = gaussian_fitter.peak_markers.clone();
 
-                bin_data.push((bin_center, count));
-            }
+        // Update the fit property with the fitted GaussianFitter
+        self.fit = Some(gaussian_fitter);
 
-            // Create DVector for x and y data for varpro fitting
-            let x: DVector<f64> = DVector::from_column_slice(&bin_data.iter().map(|(x, _)| *x).collect::<Vec<f64>>());
-            let y: DVector<f64> = DVector::from_column_slice(&bin_data.iter().map(|(_, y)| *y as f64).collect::<Vec<f64>>());
-
-
-            if x.len() == 0 || y.len() == 0 {
-                log::error!("No data available for Gaussian fit.");
-                return;
-            }
-
-            let fitter = GaussianFitter::new(x, y, self.markers.peak_markers.clone());
-            self.fit_line.append(&mut fitter.multi_gauss_fit());
-
-        }
+        Ok(())
 
     }
 
-    pub fn draw_fit(&self, plot_ui: &mut PlotUi) {
-        for (index, (amplitude, mean, std_dev)) in self.fit_line.iter().enumerate() {
-            let num_points = 100;
+    fn draw(&mut self, plot_ui: &mut PlotUi, color: Color32) {
+        if let Some(background_fitter) = &self.background {
+            background_fitter.draw_background_line(plot_ui);
+
+            if let Some(gaussian_fitter) = &self.fit {
+                gaussian_fitter.draw_decomposition_fit_lines(plot_ui, color);
     
-            // Adjust start and end to be 4 sigma from the mean
-            let start = mean - 5.0 * std_dev;
-            let end = mean + 5.0 * std_dev;
-            let step = (end - start) / num_points as f64;
+                let slope = background_fitter.background_params.unwrap().0;
+                let intercept = background_fitter.background_params.unwrap().1;
     
-            let plot_points: Vec<PlotPoint> = (0..=num_points).map(|i| {
-                let x = start + step * i as f64;
-                let y = amplitude * (-(x - mean).powi(2) / (2.0 * std_dev.powi(2))).exp();
-                PlotPoint::new(x, y)
-            }).collect();
-    
-            let fit_name = format!("Fit {}", index); // Generate a name for each fit line
-    
-            let line = Line::new(PlotPoints::Owned(plot_points))
-                .color(Color32::RED)
-                .stroke(Stroke::new(2.0, Color32::RED))
-                .name(&fit_name); // Use the generated name here
-    
-            plot_ui.line(line);
-        }
-    }
-    
-    pub fn clear_fit_line(&mut self) {
-        self.fit_line = Vec::new();
-    }
-
-    pub fn interactive_fitter(&mut self, ui: &mut egui::Ui) {
-        
-        self.markers.interactive_markers(ui);
-
-        if ui.input(|i| i.key_pressed(egui::Key::F)) {
-
-            self.fit_gaussian();
-        }
-
-        ui.horizontal(|ui| {
-
-            ui.label("Fitter");
-            
-            ui.separator();
-
-            ui.label("Clear: ");
-
-            if ui.button("Peaks").on_hover_text("Clear all peak markers").clicked() {
-                self.markers.clear_peak_markers();
+                 // Calculate and draw the convoluted fit
+                 let convoluted_fit_points = gaussian_fitter.calculate_convoluted_fit_points_with_background(slope, intercept);
+                 let line = Line::new(PlotPoints::Owned(convoluted_fit_points))
+                     .color(color) // Choose a distinct color for the convoluted fit
+                     .stroke(Stroke::new(2.0, color));
+                 plot_ui.line(line);
             }
-
-            if ui.button("Background").on_hover_text("Clear all background markers").clicked() {
-                self.markers.clear_background_markers();
-                self.clear_background_line();
-            }
-
-            if ui.button("Region").on_hover_text("Clear all region markers").clicked() {
-                self.markers.clear_region_markers();
-            }
-
-            ui.separator();
-
-            if ui.button("Clear all").on_hover_text("Clear all markers").clicked() {
-                self.markers.clear_peak_markers();
-                self.markers.clear_background_markers();
-                self.markers.clear_region_markers();
-                self.clear_background_line();
-                self.clear_fit_line();
-            }
-        });
+        }   
 
     }
 
-    pub fn draw_fit_lines(&mut self, plot_ui: &mut PlotUi) {
-        self.draw_background_line(plot_ui);
-        self.draw_fit(plot_ui);
+    fn clear(&mut self) {
+        self.fit = None;
+        self.background = None;
     }
 
 }
-
-pub fn simple_linear_regression(x_data: &[f64], y_data: &[f64]) -> Result<(f64, f64), &'static str> {
-
-    if x_data.len() != y_data.len() || x_data.is_empty() {
-        return Err("x_data and y_data must have the same non-zero length");
-    }
-
-    let n = x_data.len() as f64;
-    let sum_x = x_data.iter().sum::<f64>();
-    let sum_y = y_data.iter().sum::<f64>();
-    let sum_xy = x_data.iter().zip(y_data.iter()).map(|(x, y)| x * y).sum::<f64>();
-    let sum_x_squared = x_data.iter().map(|x| x.powi(2)).sum::<f64>();
-    
-    let denominator = n * sum_x_squared - sum_x.powi(2);
-    if denominator == 0.0 {
-        return Err("Denominator in slope calculation is zero, cannot compute slope and intercept");
-    }
-
-    let slope = (n * sum_xy - sum_x * sum_y) / denominator;
-    let intercept = (sum_y - slope * sum_x) / n;
-
-    Ok((slope, intercept))
-}
-
-
-
-
-*/
