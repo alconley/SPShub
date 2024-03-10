@@ -187,4 +187,11 @@ impl Workspace {
         });
     }
 
+    pub fn workspace_ui(&mut self, ui: &mut egui::Ui) {
+
+        self.select_directory_ui(ui);
+        self.file_selection_settings_ui(ui);
+        self.file_selection_ui_in_menu(ui);
+
+    }
 }

@@ -1,7 +1,7 @@
 use egui_plot::{VLine, PlotUi, PlotPoint};
 use egui::{Color32, Stroke};
 
-#[derive(Default, serde::Deserialize, serde::Serialize)]
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct EguiFitMarkers {
     pub region_markers: Vec<f64>,
     pub peak_markers: Vec<f64>,
@@ -36,7 +36,7 @@ impl EguiFitMarkers {
     
     pub fn draw_region_markers(&mut self, plot_ui: &mut PlotUi) {
         for x in &self.region_markers {
-            let color = Color32::from_rgb(255, 0, 255);
+            let color = Color32::BLUE;
             let line = VLine::new(*x).color(color).stroke(Stroke::new(1.0, color));
 
             plot_ui.vline(line);
@@ -58,11 +58,21 @@ impl EguiFitMarkers {
 
     pub fn draw_peak_markers(&mut self, plot_ui: &mut PlotUi) {
         for x in &self.peak_markers {
-            let color = Color32::BLUE;
+            let color = Color32::from_rgb(255, 0, 255);
             let line = VLine::new(*x).color(color).stroke(Stroke::new(1.0, color));
 
             plot_ui.vline(line);
         }
+    }
+
+    pub fn remove_peak_markers_outside_region(&mut self) {
+        let mut new_peak_markers: Vec<f64> = Vec::new();
+        for &peak in &self.peak_markers {
+            if self.region_markers[0] <= peak && peak <= self.region_markers[1] {
+                new_peak_markers.push(peak);
+            }
+        }
+        self.peak_markers = new_peak_markers;
     }
 
     /* background functions */
@@ -88,6 +98,54 @@ impl EguiFitMarkers {
     }
 
     /* more general functions */
+    pub fn delete_closest_marker(&mut self) {
+        if let Some(cursor_pos) = self.cursor_position {
+            // Combine all markers into one vector with labels to identify their types
+            let mut all_markers: Vec<(f64, String)> = Vec::new();
+            all_markers.extend(self.region_markers.iter().map(|&x| (x, "region".to_string())));
+            all_markers.extend(self.peak_markers.iter().map(|&x| (x, "peak".to_string())));
+            all_markers.extend(self.background_markers.iter().map(|&x| (x, "background".to_string())));
+
+            // Find the closest marker to the cursor position
+            if let Some((closest_marker, marker_type)) = all_markers.iter()
+                .min_by(|(x1, _), (x2, _)| {
+                    let dist1 = (cursor_pos.x - x1).abs();
+                    let dist2 = (cursor_pos.x - x2).abs();
+                    dist1.partial_cmp(&dist2).unwrap()
+                }) {
+                    // Separate the decision-making process from mutation
+                    let marker_type = marker_type.clone();
+                    let closest_marker = *closest_marker;
+                    // Now perform the deletion
+                    match marker_type.as_str() {
+                        "region" => self.delete_marker_from_region(closest_marker),
+                        "peak" => self.delete_marker_from_peak(closest_marker),
+                        "background" => self.delete_marker_from_background(closest_marker),
+                        _ => {}
+                    }
+            }
+        }
+    }
+
+    // Separate deletion methods for each marker type to avoid mutable borrowing conflicts
+    fn delete_marker_from_region(&mut self, marker_to_delete: f64) {
+        if let Some(index) = self.region_markers.iter().position(|&x| x == marker_to_delete) {
+            self.region_markers.remove(index);
+        }
+    }
+
+    fn delete_marker_from_peak(&mut self, marker_to_delete: f64) {
+        if let Some(index) = self.peak_markers.iter().position(|&x| x == marker_to_delete) {
+            self.peak_markers.remove(index);
+        }
+    }
+
+    fn delete_marker_from_background(&mut self, marker_to_delete: f64) {
+        if let Some(index) = self.background_markers.iter().position(|&x| x == marker_to_delete) {
+            self.background_markers.remove(index);
+        }
+    }
+    
     pub fn draw_markers(&mut self, plot_ui: &mut PlotUi) {
         self.draw_peak_markers(plot_ui);
         self.draw_background_markers(plot_ui);
@@ -117,6 +175,10 @@ impl EguiFitMarkers {
                 self.add_region_marker(cursor_position.x);
                 self.sort_region_markers();
             }
+
+            // if ui.input(|i| i.key_pressed(egui::Key::Minus)) {
+            //     self.delete_closest_marker();
+            // }
 
          }
 

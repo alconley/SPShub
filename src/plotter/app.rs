@@ -10,12 +10,12 @@ use std::sync::Arc;
 
 use polars::prelude::*;
 
-use super::histogram_creation::add_histograms;
-use super::histogrammer::{Histogrammer, HistogramTypes};
-use super::cut::CutHandler;
+use super::histograms::histogram_script::add_histograms;
+use super::histograms::histogrammer::{Histogrammer, HistogramTypes};
+use super::histograms::cut::CutHandler;
 use super::workspace::Workspace;
 use super::lazyframer::LazyFramer;
-use super::fitter::Fit;  
+use super::fit::fit_handler::FitHandler;  
 
 // Flags to keep track of the state of the app
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -51,7 +51,9 @@ impl Default for PlotterAppFlags {
 pub struct PlotterApp {
     workspace: Workspace,
     histogrammer: Histogrammer,
-    fitter: Fit,
+
+    #[serde(skip)]
+    fitter: FitHandler,
 
     cut_handler: CutHandler,
     selected_cut_id: Option<String>,
@@ -72,7 +74,7 @@ impl PlotterApp {
         Self {
             workspace: Workspace::new(),
             histogrammer: Histogrammer::new(),
-            fitter: Fit::new(),
+            fitter: FitHandler::new(),
             cut_handler: CutHandler::new(), // have to update column_names with the columns from the lazyframe
             selected_cut_id: None,
             lazyframer: None,
@@ -150,8 +152,8 @@ impl PlotterApp {
             return;
         }
 
-
         // add the first histogram to the fitter
+        // requiring that it is a 1d histogram
         if let Some(selected_name) = self.selected_histograms.first() {
             if let Some(histogram_type) = self.get_histogram_type(selected_name) {
                 match histogram_type {
@@ -250,7 +252,9 @@ impl PlotterApp {
 
             self.fitter.markers.cursor_position = plot_ui.pointer_coordinate();
             self.fitter.markers.draw_markers(plot_ui);
-            self.fitter.draw_fit_lines(plot_ui);
+            self.fitter.draw_fits(plot_ui);
+
+            // self.fitter.draw_fit_lines(plot_ui);
 
 
         });
@@ -442,28 +446,23 @@ impl App for PlotterApp {
 
                     ui.menu_button("Workspace", |ui| {
 
-                        self.workspace.select_directory_ui(ui);
-                        self.workspace.file_selection_settings_ui(ui);
-                        self.workspace.file_selection_ui_in_menu(ui);
+                        // self.workspace.select_directory_ui(ui);
+                        // self.workspace.file_selection_settings_ui(ui);
+                        // self.workspace.file_selection_ui_in_menu(ui);
 
+                        self.workspace.workspace_ui(ui);
                     });
-
 
                     ui.separator();
 
                     if ui.button("Calculate histograms").clicked() {
                         self.flags.histograms_loaded = false;
-
                         self.create_lazyframe_from_selected_files();
-        
                         info!("Calculating histograms");
-        
                         self.perform_histogrammer_from_lazyframe();
                         self.flags.histograms_loaded = true;
-        
                         info!("Finished caluclating histograms");
                     }
-
 
                     ui.separator();
 
@@ -476,10 +475,7 @@ impl App for PlotterApp {
                         }
                     }
 
-                    
-
                 });
-
 
                 if self.flags.show_cutter {
                     ui.separator();
@@ -490,6 +486,13 @@ impl App for PlotterApp {
 
             });
 
+            egui::TopBottomPanel::bottom("plotter_bottom_panel").resizable(true).show_inside(ui, |ui| {
+                self.fitter.interactive_keybinds(ui);
+            });
+
+            egui::SidePanel::right("plotter_right_panel").show_inside(ui, |ui| {
+                self.histogram_buttons_ui(ui);
+            });
 
             if self.workspace.file_selecton {
                 egui::SidePanel::left("plotter_left_panel").show_inside(ui, |ui| {
@@ -497,23 +500,7 @@ impl App for PlotterApp {
                 });
             }
 
-            egui::SidePanel::right("plotter_right_panel").show_inside(ui, |ui| {
-
-                self.histogram_buttons_ui(ui);
-
-            });
-
-
-
-            egui::TopBottomPanel::bottom("plotter_bottom_panel").show_inside(ui, |ui| {
-
-                self.fitter.interactive_fitter(ui);
-
-
-            });
-
             egui::CentralPanel::default().show_inside(ui, |ui| {
-
                 self.render_selected_histograms(ui);
             });
 
