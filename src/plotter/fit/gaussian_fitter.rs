@@ -2,17 +2,17 @@ use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
 use varpro::model::builder::SeparableModelBuilder;
 use nalgebra::DVector;
 
-use egui_plot::{Line, PlotItem, PlotPoint, PlotPoints, PlotUi, Text};
+use egui_plot::{Line, PlotPoint, PlotPoints, PlotUi};
 use egui::{Color32, Stroke};
 
 
-#[derive(Debug, Clone)]
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct GaussianParams {
-    amplitude: (f64, f64), // Value and uncertainty
-    mean: (f64, f64),
-    sigma: (f64, f64),
-    fwhm: (f64, f64),
-    area: (f64, f64),
+    pub amplitude: (f64, f64), // Value and uncertainty
+    pub mean: (f64, f64),
+    pub sigma: (f64, f64),
+    pub fwhm: (f64, f64),
+    pub area: (f64, f64),
 }
 
 impl GaussianParams {
@@ -56,12 +56,15 @@ impl GaussianParams {
     }
 }
 
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct GaussianFitter {
     x: Vec<f64>,
     y: Vec<f64>,
     pub peak_markers: Vec<f64>,
-    fit_params: Option<Vec<GaussianParams>>,
-    decomposition_fit_line_points: Option<Vec<Vec<PlotPoint>>>,
+    pub fit_params: Option<Vec<GaussianParams>>,
+
+    #[serde(skip)]
+    pub decomposition_fit_line_points: Option<Vec<Vec<PlotPoint>>>,
 }
 
 impl GaussianFitter {
@@ -104,6 +107,7 @@ impl GaussianFitter {
             initial_guesses.push(mean);
         }
 
+        // change initial sigma guess to something more resonable later
         initial_guesses.push(1.0);
 
 
@@ -239,7 +243,7 @@ impl GaussianFitter {
 
     pub fn draw_decomposition_fit_lines(&self, plot_ui: &mut PlotUi, color: Color32) {
         if let Some(decomposition_fit_line_points) = &self.decomposition_fit_line_points {
-            for (index, points) in decomposition_fit_line_points.iter().enumerate() {
+            for (_index, points) in decomposition_fit_line_points.iter().enumerate() {
 
                 /* 
                 // get the gaussian parameters

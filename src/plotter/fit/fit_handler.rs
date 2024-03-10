@@ -1,13 +1,13 @@
 use egui_plot::PlotUi;
 
-use egui_plot::{Line, PlotPoint, PlotPoints};
+use egui_plot::{Line, PlotPoints};
 use egui::{Color32, Stroke};
 
 use super::egui_markers::EguiFitMarkers;
 use super::gaussian_fitter::GaussianFitter;
 use super::background_fitter::BackgroundFitter;
 
-use crate::plotter::histogram1d::Histogram;
+use crate::plotter::histograms::histogram1d::Histogram;
 
 #[derive(Default)]
 pub struct FitHandler {
@@ -15,6 +15,7 @@ pub struct FitHandler {
     pub fits: Vec<Fit>,
     pub current_fit: Option<Fit>,
     pub markers: EguiFitMarkers,
+    pub show_fit_stats: bool,
 }
 
 impl FitHandler {
@@ -24,11 +25,13 @@ impl FitHandler {
             fits: Vec::new(),
             current_fit: None,
             markers: EguiFitMarkers::new(),
+            show_fit_stats: false,
         }
     }
 
     pub fn interactive_keybinds(&mut self, ui: &mut egui::Ui) {
 
+        // remove the closest marker to the cursor and the fit
         if ui.input(|i| i.key_pressed(egui::Key::Minus)) {
 
             if let Some(fit) = &mut self.current_fit {
@@ -38,34 +41,93 @@ impl FitHandler {
             self.markers.delete_closest_marker();
         }
         
+        // function for adding markers
+        // Peak markers are added with the 'P' key
+        // Background markers are added with the 'B' key
+        // Region markers are added with the 'R' key
         self.markers.interactive_markers(ui);
 
+        // fit the histogram with the 'F' key
         if ui.input(|i| i.key_pressed(egui::Key::F)) {
-            if let Some(histogram) = self.histogram.clone() {
-                self.new_fit(histogram);
-            } else {
-                eprintln!("No histogram selected for fitting.");
-            }
+            self.fit();
         }
 
+        // store the fit with the 'S' key
         if ui.input(|i| i.key_pressed(egui::Key::S)) {
             self.store_fit();
         }
 
+        // clear all markers and fits with the 'Backspace' key
         if ui.input(|i| i.key_pressed(egui::Key::Backspace)) {
-
-            if let Some(fit) = &mut self.current_fit {
-                fit.clear();
-            }
-
-            self.markers.clear_background_markers();
-            self.markers.clear_peak_markers();
-            self.markers.clear_region_markers();
-
+            self.clear_all();
         }
         
-    }
 
+        // buttons that will be displayed in the ui
+        ui.horizontal(|ui| {
+
+            if ui.button("Fit").on_hover_text("Fit the current histogram data. Shortcut: 'F' key").clicked() {
+                self.fit();
+            }
+
+            if self.current_fit.is_some() {
+                if ui.button("Store fit").on_hover_text("Store the current fit for comparison. Shortcut: 'S' key").clicked() {
+                    self.store_fit();
+                }
+            }
+
+            ui.separator();
+
+            ui.label("Clear Markers: ").on_hover_text("The closest marker to the cursor can be removed using the '-' key");
+            if ui.button("Peak").on_hover_text("Clear peak markers").clicked() {
+                self.current_fit = None;
+                self.markers.clear_peak_markers();
+            }
+
+            if ui.button("Background").on_hover_text("Clear background markers").clicked() {
+                self.current_fit = None;
+                self.markers.clear_background_markers();
+            }
+
+            if ui.button("Region").on_hover_text("Clear region markers").clicked() {
+                self.current_fit = None;
+                self.markers.clear_region_markers();
+            }
+
+            if ui.button("Clear all").on_hover_text("Clear all fits and markers. Shortcut: 'Backspace' key").clicked() {
+                self.clear_all();
+            }
+
+            ui.separator();
+
+            ui.checkbox(&mut self.show_fit_stats, "Show Fit Stats");
+
+        });
+
+        if self.show_fit_stats {
+
+            ui.separator();
+
+            // Ensure there's a horizontal scroll area to contain both stats sections side by side
+            egui::ScrollArea::horizontal().show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        // Display current fit stats in a vertical layout within the first column
+                        self.current_fit_stats_labels(ui);
+                    });
+
+                    ui.separator();
+
+                    ui.vertical(|ui| {
+                        // Display stored fits stats in a vertical layout within the second column
+                        self.stored_fit_stats_labels(ui);
+                    });
+                });
+            });
+
+        }
+            
+    }    
 
     fn new_fit(&mut self, histogram: Histogram) {
         let mut fit = Fit::new(histogram, self.markers.clone());
@@ -77,6 +139,91 @@ impl FitHandler {
         self.markers = fit.markers.clone(); // update the makers with the fit markers
         self.current_fit = Some(fit);
 
+    }
+
+    fn fit(&mut self) {
+        if let Some(histogram) = self.histogram.clone() {
+            self.new_fit(histogram);
+        } else {
+            eprintln!("No histogram selected for fitting.");
+        }
+    }
+
+    fn current_fit_stats_labels(&self, ui: &mut egui::Ui) {
+        if let Some(fit) = &self.current_fit {
+            ui.label("Current Fit");
+
+            if let Some(gaussian_fitter) = &fit.fit {
+                if let Some(params) = &gaussian_fitter.fit_params {
+                    egui::ScrollArea::vertical().id_source("current_fit_scroll").show(ui, |ui| {
+                        egui::Grid::new("current_fit_stats_grid")
+                            .striped(true) // Adds a subtle background color to every other row for readability
+                            // .min_col_width(100.0) // Ensures that each column has a minimum width for better alignment
+                            .show(ui, |ui| {
+                                // Headers
+                                ui.label("Fit #");
+                                ui.label("Mean");
+                                ui.label("FWHM");
+                                ui.label("Area");
+                                ui.end_row(); // End the header row
+                                
+                                // Iterate over params to fill in the grid with fit statistics
+                                for (index, param) in params.iter().enumerate() {
+                                    ui.label(format!("{}", index)); // Fit number
+                                    ui.label(format!("{:.2} ± {:.2}", param.mean.0, param.mean.1)); // Mean
+                                    ui.label(format!("{:.2} ± {:.2}", param.fwhm.0, param.fwhm.1)); // FWHM
+                                    ui.label(format!("{:.2} ± {:.2}", param.area.0, param.area.1)); // Area
+                                    ui.end_row(); // Move to the next row for the next set of stats
+                                }
+                        });
+                    });
+                }
+            }
+        }
+    }
+
+    fn stored_fit_stats_labels(&self, ui: &mut egui::Ui) {
+        if !self.fits.is_empty() {
+            ui.label("Stored Fits");
+    
+            egui::ScrollArea::vertical().id_source("stored_fit_scroll").show(ui, |ui| {
+                egui::Grid::new("stored_fit_stats_grid")
+                    .striped(true)
+                    .show(ui, |ui| {
+                        // Headers
+                        ui.label("Fit Index");
+                        ui.label("Mean");
+                        ui.label("FWHM");
+                        ui.label("Area");
+                        ui.end_row(); // End the header row
+    
+                        // Iterate over stored fits to fill in the grid with fit statistics
+                        for (fit_index, fit) in self.fits.iter().enumerate() {
+                            // Assuming each fit has a similar structure to current_fit
+                            // and contains fit parameters to display
+                            if let Some(gaussian_fitter) = &fit.fit {
+                                if let Some(params) = &gaussian_fitter.fit_params {
+                                    // Display stats for each parameter set within the fit
+                                    for (param_index, param) in params.iter().enumerate() {
+                                        ui.label(format!("{}-{}", fit_index, param_index)); // Fit and parameter index
+                                        ui.label(format!("{:.2} ± {:.2}", param.mean.0, param.mean.1)); // Mean
+                                        ui.label(format!("{:.2} ± {:.2}", param.fwhm.0, param.fwhm.1)); // FWHM
+                                        ui.label(format!("{:.2} ± {:.2}", param.area.0, param.area.1)); // Area
+                                        ui.end_row(); // Move to the next row for the next set of stats
+                                    }
+                                }
+                            }
+                        }
+                    });
+            });
+        }
+    }
+
+    fn clear_all(&mut self) {
+        self.current_fit = None;
+        self.markers.clear_background_markers();
+        self.markers.clear_peak_markers();
+        self.markers.clear_region_markers();
     }
 
     fn store_fit(&mut self) {
@@ -98,7 +245,6 @@ impl FitHandler {
             fit.draw(plot_ui, color);
         }
     }
-
 
 }
 

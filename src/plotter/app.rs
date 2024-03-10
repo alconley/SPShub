@@ -10,9 +10,9 @@ use std::sync::Arc;
 
 use polars::prelude::*;
 
-use super::histogram_creation::add_histograms;
-use super::histogrammer::{Histogrammer, HistogramTypes};
-use super::cut::CutHandler;
+use super::histograms::histogram_script::add_histograms;
+use super::histograms::histogrammer::{Histogrammer, HistogramTypes};
+use super::histograms::cut::CutHandler;
 use super::workspace::Workspace;
 use super::lazyframer::LazyFramer;
 use super::fit::fit_handler::FitHandler;  
@@ -446,24 +446,21 @@ impl App for PlotterApp {
 
                     ui.menu_button("Workspace", |ui| {
 
-                        self.workspace.select_directory_ui(ui);
-                        self.workspace.file_selection_settings_ui(ui);
-                        self.workspace.file_selection_ui_in_menu(ui);
+                        // self.workspace.select_directory_ui(ui);
+                        // self.workspace.file_selection_settings_ui(ui);
+                        // self.workspace.file_selection_ui_in_menu(ui);
 
+                        self.workspace.workspace_ui(ui);
                     });
 
                     ui.separator();
 
                     if ui.button("Calculate histograms").clicked() {
                         self.flags.histograms_loaded = false;
-
                         self.create_lazyframe_from_selected_files();
-        
                         info!("Calculating histograms");
-        
                         self.perform_histogrammer_from_lazyframe();
                         self.flags.histograms_loaded = true;
-        
                         info!("Finished caluclating histograms");
                     }
 
@@ -489,6 +486,13 @@ impl App for PlotterApp {
 
             });
 
+            egui::TopBottomPanel::bottom("plotter_bottom_panel").resizable(true).show_inside(ui, |ui| {
+                self.fitter.interactive_keybinds(ui);
+            });
+
+            egui::SidePanel::right("plotter_right_panel").show_inside(ui, |ui| {
+                self.histogram_buttons_ui(ui);
+            });
 
             if self.workspace.file_selecton {
                 egui::SidePanel::left("plotter_left_panel").show_inside(ui, |ui| {
@@ -496,20 +500,7 @@ impl App for PlotterApp {
                 });
             }
 
-            egui::SidePanel::right("plotter_right_panel").show_inside(ui, |ui| {
-
-                self.histogram_buttons_ui(ui);
-
-            });
-
-            egui::TopBottomPanel::bottom("plotter_bottom_panel").show_inside(ui, |ui| {
-
-                self.fitter.interactive_keybinds(ui);
-
-            });
-
             egui::CentralPanel::default().show_inside(ui, |ui| {
-
                 self.render_selected_histograms(ui);
             });
 
