@@ -1,5 +1,7 @@
 pub mod app;
-mod histograms;
-mod workspace;
+mod histogrammer;
+mod workspacer;
 mod lazyframer;
-mod fit;
+mod fitter;
+mod cutter;
+mod processer;

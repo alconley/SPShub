@@ -1,10 +1,13 @@
 use egui_plot::{Line, PlotUi, PlotPoint, PlotPoints};
 use egui::{Color32, Stroke};
 
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct BackgroundFitter {
     pub x: Vec<f64>,
     pub y: Vec<f64>,
     pub background_params: Option<(f64, f64)>, // (slope, intercept)
+
+    #[serde(skip)]
     pub background_line_points: Option<Vec<PlotPoint>>, 
 }
 
@@ -97,35 +100,3 @@ impl BackgroundFitter {
     }
 
 }
-
-
-// pub fn get_background_marker_data(&self, histogram: &Histogram) -> Vec<(f64, f64)> {
-//     let mut points = Vec::new();
-    
-//     if let Some(bg_markers) = &self.background_markers {
-//         for &x in bg_markers {
-//             if let Some(bin_index) = histogram.get_bin(x) {
-//                 let bin_center = histogram.range.0 + (bin_index as f64 * histogram.bin_width) + (histogram.bin_width * 0.5);
-//                 points.push((bin_center, histogram.bins[bin_index] as f64));
-//             }
-//         }
-//     }
-
-//     points
-// }
-
-
-// pub fn create_background_subtracted_histogram(&self, histogram: &Histogram) -> Result<Histogram, &'static str> {
-//     let (slope, intercept) = self.background_params.ok_or("Background parameters not set.")?;
-
-//     let mut subtracted_histogram = histogram.clone();
-
-//     // Subtract background estimate from each bin
-//     for (index, bin_count) in subtracted_histogram.bins.iter_mut().enumerate() {
-//         let bin_center = histogram.range.0 + (histogram.bin_width * index as f64) + (histogram.bin_width / 2.0);
-//         let background_estimate = slope * bin_center + intercept;
-//         *bin_count = bin_count.saturating_sub(background_estimate.round() as u32);
-//     }
-
-//     Ok(subtracted_histogram)
-// }

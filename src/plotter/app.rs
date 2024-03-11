@@ -5,17 +5,12 @@ use eframe::egui::{self, Color32};
 use eframe::App;
 use egui_plot::{Plot, Legend, Text, PlotPoint};
 
-use std::path::PathBuf;
-use std::sync::Arc;
-
-use polars::prelude::*;
-
-use super::histograms::histogram_script::add_histograms;
-use super::histograms::histogrammer::{Histogrammer, HistogramTypes};
-use super::histograms::cut::CutHandler;
-use super::workspace::Workspace;
+use super::histogrammer::histogram_script::add_histograms;
+use super::histogrammer::histogrammer::{Histogrammer, HistogramTypes};
+use super::cutter::cut::CutHandler;
+use super::workspacer::Workspace;
 use super::lazyframer::LazyFramer;
-use super::fit::fit_handler::FitHandler;  
+use super::fitter::fit_handler::FitHandler;  
 
 // Flags to keep track of the state of the app
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -52,7 +47,6 @@ pub struct PlotterApp {
     workspace: Workspace,
     histogrammer: Histogrammer,
 
-    #[serde(skip)]
     fitter: FitHandler,
 
     cut_handler: CutHandler,
@@ -89,61 +83,37 @@ impl PlotterApp {
 
         if !self.workspace.selected_files.is_empty() {
 
-            let files_arc: Arc<[PathBuf]> = Arc::from(self.workspace.selected_files.clone());
-
-            let args = ScanArgsParquet::default();
-            log::info!("Files {:?}", files_arc);
-            // Instead of using `?`, use a match or if let to handle the Result
-            match LazyFrame::scan_parquet_files(files_arc, args) {
-                Ok(lf) => {
-                    // Successfully loaded LazyFrame, do something with it
-                    // self.lazyframe = Some(lf);
-                    self.lazyframer = Some(LazyFramer::new(lf));
-                    self.flags.lazyframe_loaded = true;
-
-                    // Update CutHandler with column names from LazyFramer
-                    if let Some(ref lazyframer) = self.lazyframer {
-                        let column_names = lazyframer.get_column_names();
-                        self.cut_handler.update_column_names(column_names);
-
-                        log::info!("Column names: {:?}", self.cut_handler.column_names.clone());
-                    }
-                },
-                Err(e) => {
-                    // Handle the error, e.g., log it
-                    log::error!("Failed to load Parquet files: {}", e);
-                }
+            self.lazyframer = Some(LazyFramer::new(self.workspace.selected_files.clone()));
+            self.flags.lazyframe_loaded = true;
+            
+            // Update CutHandler with column names from LazyFramer
+            if let Some(ref lazyframer) = self.lazyframer {
+                let column_names = lazyframer.get_column_names();
+                self.cut_handler.update_column_names(column_names);
+                log::info!("Column names: {:?}", self.cut_handler.column_names.clone());
             }
         }
     }
 
     fn perform_histogrammer_from_lazyframe(&mut self) {
         if let Some(lazyframer) = &self.lazyframer {
-            match add_histograms(lazyframer.get_lazyframe().clone()) { 
-                Ok(h) => {
-                    self.histogrammer = h;
-                },
-                Err(e) => {
-                    log::error!("Failed to create histograms: {}", e);
+            if let Some(lf) = &lazyframer.lazyframe {
+                match add_histograms(lf.clone()) { 
+                    Ok(h) => {
+                        self.histogrammer = h; 
+                    },
+                    Err(e) => {
+                        log::error!("Failed to create histograms: {}", e);
+                    }
                 }
+            } else {
+                log::error!("LazyFrame is not loaded");
             }
+        } else {
+            log::error!("LazyFramer is not initialized");
         }
     }
-
-    fn get_histogram_list(&self) -> Vec<String> {
-        // Retrieves a sorted list of histogram names.
-        let mut histogram_names: Vec<String> = self.histogrammer.histogram_list
-            .keys()
-            .cloned()
-            .collect();
-        histogram_names.sort();
-        histogram_names
-    }
-
-    fn get_histogram_type(&self, name: &str) -> Option<&HistogramTypes> {
-        self.histogrammer.histogram_list.get(name)
-    }
-
+    
     fn render_selected_histograms(&mut self, ui: &mut egui::Ui) {
                 
         // Display a message if no histograms are selected.
@@ -155,7 +125,7 @@ impl PlotterApp {
         // add the first histogram to the fitter
         // requiring that it is a 1d histogram
         if let Some(selected_name) = self.selected_histograms.first() {
-            if let Some(histogram_type) = self.get_histogram_type(selected_name) {
+            if let Some(histogram_type) = self.histogrammer.get_histogram_type(selected_name) {
                 match histogram_type {
                     HistogramTypes::Hist1D(hist) => {
                         self.fitter.histogram = Some(hist.clone());
@@ -194,7 +164,7 @@ impl PlotterApp {
 
             for (i, selected_name) in self.selected_histograms.iter().enumerate() {
                 // Render the appropriate histogram type based on its type.
-                match self.get_histogram_type(selected_name) {
+                match self.histogrammer.get_histogram_type(selected_name) {
                     Some(HistogramTypes::Hist1D(hist)) => {
 
                         // Render a 1D histogram as a step line.
@@ -264,7 +234,7 @@ impl PlotterApp {
         
         ui.label("Histograms"); // Label for the histogram buttons.
         
-        let keys: Vec<String> = self.get_histogram_list(); // Retrieve the list of histogram names.
+        let keys: Vec<String> = self.histogrammer.get_histogram_list(); // Retrieve the list of histogram names.
 
         // Layout for the buttons: top down and justified at the top.
         egui::ScrollArea::vertical().show(ui, |ui| {
@@ -292,6 +262,7 @@ impl PlotterApp {
 
     }
 
+    /* 
     fn cutter_ui(&mut self, ui: &mut egui::Ui) {
 
         ui.horizontal(|ui| {
@@ -416,7 +387,7 @@ impl PlotterApp {
                 }
             }
         }
-    }
+    }*/
 
 }
 
@@ -479,7 +450,7 @@ impl App for PlotterApp {
 
                 if self.flags.show_cutter {
                     ui.separator();
-                    self.cutter_ui(ui);
+                    // self.cutter_ui(ui);
                 } else {
                     self.cut_handler.draw_flag = false;
                 }
@@ -502,6 +473,7 @@ impl App for PlotterApp {
 
             egui::CentralPanel::default().show_inside(ui, |ui| {
                 self.render_selected_histograms(ui);
+                
             });
 
         });

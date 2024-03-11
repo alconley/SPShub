@@ -12,10 +12,8 @@ use polars::prelude::*;
 pub struct CutHandler {
     pub cuts: HashMap<String, EditableEguiPolygon>,
     pub active_cut_id: Option<String>,
-    pub draw_flag: bool,
-    pub save_option: String,
-    pub save_seperate_suffix: String,
     pub column_names: Vec<String>,
+    pub draw_flag: bool,
 }
 
 impl CutHandler {
@@ -24,10 +22,8 @@ impl CutHandler {
         Self {
             cuts: HashMap::new(),
             active_cut_id: None,
-            draw_flag: true,
-            save_option: "separate".to_string(),
-            save_seperate_suffix : "filtered".to_string(), // Default suffix for separate save option
             column_names: Vec::new(),
+            draw_flag: true,
         }
     }
 
@@ -131,41 +127,20 @@ impl CutHandler {
         Ok(())
     }
 
+    pub fn cut_handler_ui(&mut self, ui: &mut egui::Ui) {
+
+        ui.horizontal(|ui| {
+        
+            if ui.button("New Cut").clicked() {
+                self.add_new_cut();
+            }
+
+            ui.separator();
+
+
+            ui.separator();
+
+        });
+    }
 }
 
-
-// if ui.button("Save").clicked() {
-
-//     // Depending on the save option, call the appropriate method
-//     match self.save_option.as_str() {
-//         "single" => {
-
-//             if let Some(path) = FileDialog::new()
-//             .set_title("Save Reduced DataFrame to a Single File")
-//             .add_filter("Parquet file", &["parquet"])
-//             .save_file() {
-
-//                 // Call the method to save all filtered dataframes into one file
-//                 if let Err(e) = self.filter_files_and_save_to_one_file(file_paths.clone(), &path) {
-//                     eprintln!("Failed to save DataFrame: {:?}", e);
-//                 }
-
-//             }
-//         },
-//         "separate" => {                            
-//             if let Some(directory_path) = FileDialog::new()
-//             .set_title("Select Directory to Save Each DataFrame Separately")
-//             .pick_folder() {
-            
-//                 let suffix = self.save_seperate_suffix.clone();
-
-//                 // Assuming filter_files_and_save_separately expects a directory path and suffix
-//                 if let Err(e) = self.filter_files_and_save_separately(file_paths.clone(), &directory_path, &suffix) {
-//                     eprintln!("Failed to save DataFrames separately: {:?}", e);
-//                 }
-//             }
-//         },
-//         _ => {} // Handle other cases or do nothing
-    
-//     }
-// }

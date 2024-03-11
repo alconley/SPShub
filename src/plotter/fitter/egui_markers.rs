@@ -1,7 +1,7 @@
 use egui_plot::{VLine, PlotUi, PlotPoint};
 use egui::{Color32, Stroke};
 
-#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct EguiFitMarkers {
     pub region_markers: Vec<f64>,
     pub peak_markers: Vec<f64>,

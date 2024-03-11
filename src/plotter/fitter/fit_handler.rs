@@ -7,9 +7,9 @@ use super::egui_markers::EguiFitMarkers;
 use super::gaussian_fitter::GaussianFitter;
 use super::background_fitter::BackgroundFitter;
 
-use crate::plotter::histograms::histogram1d::Histogram;
+use crate::plotter::histogrammer::histogram1d::Histogram;
 
-#[derive(Default)]
+#[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct FitHandler {
     pub histogram: Option<Histogram>,
     pub fits: Vec<Fit>,
@@ -248,6 +248,7 @@ impl FitHandler {
 
 }
 
+#[derive(serde::Deserialize, serde::Serialize)]
 pub struct Fit {
     histogram: Histogram,
     markers: EguiFitMarkers,

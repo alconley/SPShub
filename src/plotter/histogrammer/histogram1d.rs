@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Histogram {
     pub bins: Vec<u32>,
@@ -114,5 +113,4 @@ impl Histogram {
     //     centers
     // }
 
-    
 }

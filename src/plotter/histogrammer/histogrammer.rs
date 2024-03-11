@@ -199,9 +199,22 @@ impl Histogrammer {
             None
         }
     }
-        
+
+    // additional functions 
+    pub fn get_histogram_list(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.histogram_list.keys().cloned().collect();
+        names.sort();
+
+        names
+    }
+
+    pub fn get_histogram_type(&self, name: &str) -> Option<&HistogramTypes> {
+        self.histogram_list.get(name)
+    }
+
 }
 
+// Function to generate a color based on a value using the Viridis colormap, the matplotlib default.
 fn viridis_colormap(value: u32, min: u32, max: u32) -> Color32 {
     // Handle case where min == max to avoid division by zero
     let normalized: f64 = if max > min {
