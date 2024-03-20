@@ -1,16 +1,12 @@
-use egui::Vec2b;
 use log::info;
 
-use eframe::egui::{self, Color32};
+use eframe::egui::{self};
 use eframe::App;
-use egui_plot::{Plot, Legend, Text, PlotPoint};
 
 use super::histogrammer::histogram_script::add_histograms;
-use super::histogrammer::histogrammer::{Histogrammer, HistogramTypes};
-use super::cutter::cut::CutHandler;
 use super::workspacer::Workspace;
 use super::lazyframer::LazyFramer;
-use super::fitter::fit_handler::FitHandler;  
+use super::processer::Processer;
 
 // Flags to keep track of the state of the app
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -45,18 +41,10 @@ impl Default for PlotterAppFlags {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct PlotterApp {
     workspace: Workspace,
-    histogrammer: Histogrammer,
-
-    fitter: FitHandler,
-
-    cut_handler: CutHandler,
-    selected_cut_id: Option<String>,
+    processer: Processer,
 
     #[serde(skip)]
     lazyframer: Option<LazyFramer>,
-
-    #[serde(skip)]
-    selected_histograms: Vec<String>,
 
     flags: PlotterAppFlags,
 
@@ -67,12 +55,8 @@ impl PlotterApp {
 
         Self {
             workspace: Workspace::new(),
-            histogrammer: Histogrammer::new(),
-            fitter: FitHandler::new(),
-            cut_handler: CutHandler::new(), // have to update column_names with the columns from the lazyframe
-            selected_cut_id: None,
+            processer: Processer::new(),
             lazyframer: None,
-            selected_histograms: Vec::new(),
             flags: PlotterAppFlags::default(),
         }
     }
@@ -86,12 +70,12 @@ impl PlotterApp {
             self.lazyframer = Some(LazyFramer::new(self.workspace.selected_files.clone()));
             self.flags.lazyframe_loaded = true;
             
-            // Update CutHandler with column names from LazyFramer
-            if let Some(ref lazyframer) = self.lazyframer {
-                let column_names = lazyframer.get_column_names();
-                self.cut_handler.update_column_names(column_names);
-                log::info!("Column names: {:?}", self.cut_handler.column_names.clone());
-            }
+            // // Update CutHandler with column names from LazyFramer
+            // if let Some(ref lazyframer) = self.lazyframer {
+            //     let column_names = lazyframer.get_column_names();
+            //     self.cut_handler.update_column_names(column_names);
+            //     log::info!("Column names: {:?}", self.cut_handler.column_names.clone());
+            // }
         }
     }
 
@@ -100,7 +84,8 @@ impl PlotterApp {
             if let Some(lf) = &lazyframer.lazyframe {
                 match add_histograms(lf.clone()) { 
                     Ok(h) => {
-                        self.histogrammer = h; 
+                        // self.histogrammer = h; 
+                        self.processer.histogrammer = h;
                     },
                     Err(e) => {
                         log::error!("Failed to create histograms: {}", e);
@@ -114,154 +99,6 @@ impl PlotterApp {
         }
     }
     
-    fn render_selected_histograms(&mut self, ui: &mut egui::Ui) {
-                
-        // Display a message if no histograms are selected.
-        if self.selected_histograms.is_empty() {
-            ui.label("No histogram selected");
-            return;
-        }
-
-        // add the first histogram to the fitter
-        // requiring that it is a 1d histogram
-        if let Some(selected_name) = self.selected_histograms.first() {
-            if let Some(histogram_type) = self.histogrammer.get_histogram_type(selected_name) {
-                match histogram_type {
-                    HistogramTypes::Hist1D(hist) => {
-                        self.fitter.histogram = Some(hist.clone());
-                    },
-                    _ => {}
-                }
-            }
-        }
-
-        // Set up the plot for the combined histogram display.
-        let plot = Plot::new("Combined Histogram")
-            .legend(Legend::default())
-            .clamp_grid(true)
-            .allow_drag(false)
-            .allow_zoom(false)
-            .allow_boxed_zoom(true)
-            .auto_bounds(Vec2b::new(true, true))
-            .allow_scroll(true);
-
-        // Display the plot in the UI.
-        plot.show(ui, |plot_ui| {
-            
-            // Define a set of colors for the histograms.
-            let colors: [Color32; 5] = [
-                Color32::LIGHT_BLUE, 
-                Color32::LIGHT_RED, 
-                Color32::LIGHT_GREEN, 
-                Color32::LIGHT_YELLOW, 
-                Color32::LIGHT_GRAY
-            ];
-
-            let plot_min_x = plot_ui.plot_bounds().min()[0];
-            let plot_max_x = plot_ui.plot_bounds().max()[0];
-            let plot_min_y = plot_ui.plot_bounds().min()[1];
-            let plot_max_y = plot_ui.plot_bounds().max()[1];
-
-            for (i, selected_name) in self.selected_histograms.iter().enumerate() {
-                // Render the appropriate histogram type based on its type.
-                match self.histogrammer.get_histogram_type(selected_name) {
-                    Some(HistogramTypes::Hist1D(hist)) => {
-
-                        // Render a 1D histogram as a step line.
-                        let hist_color = colors[i % colors.len()];
-                        // if let Some(step_line) = self.histogrammer.egui_histogram_step(selected_name, colors[i % colors.len()]) {
-                        if let Some(step_line) = self.histogrammer.egui_histogram_step(selected_name, hist_color) {
-
-                            plot_ui.line(step_line);
-
-                            let stats_entries = hist.legend_entries(plot_min_x, plot_max_x);
-
-                            for (_i, entry) in stats_entries.iter().enumerate() {
-                                plot_ui.text(
-                                    Text::new(PlotPoint::new(0, 0), " ") // Placeholder for positioning; adjust as needed
-                                        .highlight(false)
-                                        .color(hist_color)
-                                        .name(entry)
-                                );
-                            }
-
-                        }
-                    }
-                    Some(HistogramTypes::Hist2D(hist)) => {
-                        
-                        let hist_color = colors[i % colors.len()];
-
-                        // Render a 2D histogram as a heatmap.
-                        if let Some(bar_chart) = self.histogrammer.egui_heatmap(selected_name) {
-                            plot_ui.bar_chart(bar_chart);
-
-                            let stats_entries = hist.legend_entries(plot_min_x, plot_max_x, plot_min_y, plot_max_y);
-
-                            for (_i, entry) in stats_entries.iter().enumerate() {
-                                plot_ui.text(
-                                    Text::new(PlotPoint::new(0, 0), " ") // Placeholder for positioning; adjust as needed
-                                        .highlight(false)
-                                        .color(hist_color)
-                                        .name(entry)
-                                );
-                            }
-
-                        }
-                    }
-
-                    None => {
-                        // Optionally handle the case where the histogram is not found or its type is not supported.
-                        // ui.label(format!("Histogram '{}' not found or type not supported.", selected_name));
-                    }
-                }
-            }
-
-            if self.cut_handler.draw_flag {
-                self.cut_handler.draw_active_cut(plot_ui);
-            }
-
-            self.fitter.markers.cursor_position = plot_ui.pointer_coordinate();
-            self.fitter.markers.draw_markers(plot_ui);
-            self.fitter.draw_fits(plot_ui);
-
-            // self.fitter.draw_fit_lines(plot_ui);
-
-
-        });
-    }
-
-    fn histogram_buttons_ui(&mut self, ui: &mut egui::Ui) {
-        
-        ui.label("Histograms"); // Label for the histogram buttons.
-        
-        let keys: Vec<String> = self.histogrammer.get_histogram_list(); // Retrieve the list of histogram names.
-
-        // Layout for the buttons: top down and justified at the top.
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.with_layout(egui::Layout::top_down_justified(egui::Align::TOP), |ui| {
-                for name in keys {
-                    // Create a button for each histogram name.
-                    let button: egui::Button<'_> = egui::Button::new(&name);
-                    let response: egui::Response = ui.add(button); // Add the button to the UI and get the response.
-
-                    // If the button is clicked, clear the current selection and select this histogram.
-                    if response.clicked() {
-                        self.selected_histograms.clear();
-                        self.selected_histograms.push(name.clone());
-                    }
-
-                    // If the button is right-clicked, add this histogram to the selection without clearing existing selections.
-                    if response.secondary_clicked() {
-                        if !self.selected_histograms.contains(&name) {
-                            self.selected_histograms.push(name.clone());
-                        }
-                    }
-                }
-            });
-        });
-
-    }
-
     /* 
     fn cutter_ui(&mut self, ui: &mut egui::Ui) {
 
@@ -406,15 +243,6 @@ impl App for PlotterApp {
 
                 egui::menu::bar(ui, |ui| {
 
-                    ui.menu_button("Status", |ui| {
-                        ui.label(format!("LazyFrame loaded: {}", self.flags.lazyframe_loaded));
-                        ui.label(format!("Histograms loaded: {}", self.flags.histograms_loaded));
-                        ui.label(format!("Files selected: {}", self.workspace.selected_files.len()));
-                        ui.label(format!("Show Cutter: {}", self.flags.show_cutter));
-                    });
-
-                    ui.separator();
-
                     ui.menu_button("Workspace", |ui| {
 
                         // self.workspace.select_directory_ui(ui);
@@ -448,21 +276,21 @@ impl App for PlotterApp {
 
                 });
 
-                if self.flags.show_cutter {
-                    ui.separator();
-                    // self.cutter_ui(ui);
-                } else {
-                    self.cut_handler.draw_flag = false;
-                }
+                // if self.flags.show_cutter {
+                //     ui.separator();
+                //     // self.cutter_ui(ui);
+                // } else {
+                //     self.cut_handler.draw_flag = false;
+                // }
 
             });
 
-            egui::TopBottomPanel::bottom("plotter_bottom_panel").resizable(true).show_inside(ui, |ui| {
-                self.fitter.interactive_keybinds(ui);
-            });
+            // egui::TopBottomPanel::bottom("plotter_bottom_panel").resizable(true).show_inside(ui, |ui| {
+                // self.fitter.interactive_keybinds(ui);
+            // });
 
             egui::SidePanel::right("plotter_right_panel").show_inside(ui, |ui| {
-                self.histogram_buttons_ui(ui);
+                self.processer.select_histograms_ui(ui);
             });
 
             if self.workspace.file_selecton {
@@ -472,7 +300,7 @@ impl App for PlotterApp {
             }
 
             egui::CentralPanel::default().show_inside(ui, |ui| {
-                self.render_selected_histograms(ui);
+                self.processer.render_histos(ui);
                 
             });
 

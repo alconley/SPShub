@@ -391,7 +391,7 @@ impl Fit {
                  let convoluted_fit_points = gaussian_fitter.calculate_convoluted_fit_points_with_background(slope, intercept);
                  let line = Line::new(PlotPoints::Owned(convoluted_fit_points))
                      .color(color) // Choose a distinct color for the convoluted fit
-                     .stroke(Stroke::new(2.0, color));
+                     .stroke(Stroke::new(1.0, color));
                  plot_ui.line(line);
             }
         }   

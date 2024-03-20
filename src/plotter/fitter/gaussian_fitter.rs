@@ -189,9 +189,15 @@ impl GaussianFitter {
             let sigma = nonlinear_parameters[nonlinear_parameters.len() - 1];
             let sigma_variance = nonlinear_variances[nonlinear_parameters.len() - 1];
 
+            // clear peak markers and update with the mean of the gaussians
+            self.peak_markers.clear();
+
             // Assuming the amplitude (c) for each Gaussian comes first in linear_coefficients
             for (i, &amplitude) in linear_coefficients.iter().enumerate() {
                 let mean = nonlinear_parameters[i];
+                // update peak markers
+                self.peak_markers.push(mean);
+
                 let mean_variance = nonlinear_variances[i];
                 let amplitude_variance = linear_variances[i];
 
@@ -260,7 +266,7 @@ impl GaussianFitter {
 
                 let line = Line::new(PlotPoints::Owned(points.clone()))
                     .color(color)
-                    .stroke(Stroke::new(2.0, color));
+                    .stroke(Stroke::new(1.0, color));
 
 
                 plot_ui.line(line);
