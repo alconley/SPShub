@@ -371,14 +371,14 @@ impl Processer {
 
                 ui.separator();
 
-                if ui.button("Save Lazyframe").on_hover_text("CAUTION: The lazyframe must fit it memory\nThis saves the current lazyframe").clicked() {
+                if ui.button("Save Lazyframe").on_hover_text("CAUTION: The collected lazyframe must fit it memory\nThis saves the current lazyframe. It is advised to filter the lazyframe with cuts.").clicked() {
                     self.save_current_lazyframe();
                 }
 
                 if !self.cut_handler.cuts.is_empty() {
 
                     ui.separator();
-                    if ui.button("Filter with Cuts").on_hover_text("CAUTION: The lazyframe must fit it memory").clicked() {
+                    if ui.button("Filter with Cuts").on_hover_text("CAUTION: The collected lazyframe must fit it memory").clicked() {
                         self.filter_lazyframe_with_cuts();
                     }
 

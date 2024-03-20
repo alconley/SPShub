@@ -96,7 +96,7 @@ impl CutHandler {
         
     }
 
-    pub fn filter_files_and_save_separately(&mut self, file_paths: Vec<PathBuf>, output_dir: &PathBuf, custom_text: &str) -> Result<(), PolarsError> {
+    pub fn _filter_files_and_save_separately(&mut self, file_paths: Vec<PathBuf>, output_dir: &PathBuf, custom_text: &str) -> Result<(), PolarsError> {
     
         for file_path in file_paths.iter() {
 
@@ -201,5 +201,6 @@ impl CutHandler {
         }
 
     }
+
 }
 
