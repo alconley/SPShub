@@ -1,103 +1,86 @@
-use log::info;
-
 use eframe::egui::{self};
 use eframe::App;
 
-use super::histogrammer::histogram_script::add_histograms;
-use super::workspacer::Workspace;
-use super::lazyframer::LazyFramer;
+use super::workspacer::Workspacer;
 use super::processer::Processer;
-
-// Flags to keep track of the state of the app
-#[derive(serde::Deserialize, serde::Serialize)]
-struct PlotterAppFlags {
-    lazyframe_loaded: bool,
-    histograms_loaded: bool,
-    files_selected: bool,
-    show_cutter: bool,
-    cutter_cuts_exist: bool,
-    cutter_save_to_one_file: bool,
-    cutter_save_to_separate_files: bool,
-    cutter_filter_lazyframe: bool,
-    can_cut_lazyframe: bool,
-}
-
-impl Default for PlotterAppFlags {
-    fn default() -> Self {
-        Self {
-            lazyframe_loaded: false,
-            files_selected: false,
-            histograms_loaded: false,
-            show_cutter: false,
-            cutter_cuts_exist: false,
-            cutter_save_to_one_file: false,
-            cutter_save_to_separate_files: false,
-            cutter_filter_lazyframe: false,
-            can_cut_lazyframe: false,
-        }
-    }
-}
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct PlotterApp {
-    workspace: Workspace,
+    workspacer: Workspacer,
     processer: Processer,
-
-    #[serde(skip)]
-    lazyframer: Option<LazyFramer>,
-
-    flags: PlotterAppFlags,
-
 }
 
 impl PlotterApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
 
         Self {
-            workspace: Workspace::new(),
+            workspacer: Workspacer::new(),
             processer: Processer::new(),
-            lazyframer: None,
-            flags: PlotterAppFlags::default(),
         }
     }
 
-    fn create_lazyframe_from_selected_files(&mut self) {
+}
 
-        log::info!("Creating LazyFrame from selected files");
+impl App for PlotterApp {
+    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
 
-        if !self.workspace.selected_files.is_empty() {
+        let mut size = ctx.screen_rect().size();
+        size.x -= 50.0; // Subtract 50 from the width
+        size.y -= 100.0; // Subtract 50 from the height
 
-            self.lazyframer = Some(LazyFramer::new(self.workspace.selected_files.clone()));
-            self.flags.lazyframe_loaded = true;
-            
-            // // Update CutHandler with column names from LazyFramer
-            // if let Some(ref lazyframer) = self.lazyframer {
-            //     let column_names = lazyframer.get_column_names();
-            //     self.cut_handler.update_column_names(column_names);
-            //     log::info!("Column names: {:?}", self.cut_handler.column_names.clone());
-            // }
-        }
-    }
+        egui::Window::new("Plotter").max_size(size).show(ctx, |ui| {
 
-    fn perform_histogrammer_from_lazyframe(&mut self) {
-        if let Some(lazyframer) = &self.lazyframer {
-            if let Some(lf) = &lazyframer.lazyframe {
-                match add_histograms(lf.clone()) { 
-                    Ok(h) => {
-                        // self.histogrammer = h; 
-                        self.processer.histogrammer = h;
-                    },
-                    Err(e) => {
-                        log::error!("Failed to create histograms: {}", e);
+            egui::TopBottomPanel::top("plotter_top_panel").show_inside(ui, |ui| {
+
+                egui::menu::bar(ui, |ui| {
+
+                    ui.menu_button("Workspace", |ui| {
+                        self.workspacer.workspace_ui(ui);
+                    });
+
+                    if self.workspacer.selected_files.len() > 0 {
+
+                        self.processer.files = self.workspacer.selected_files.clone();
+                        self.processer.calculation_ui(ui);
+                        // ui.separator();
+
+                        // if ui.button("Calculate histograms").clicked() {
+                        //     // add selected files to processer
+                        //     self.processer.files = self.workspacer.selected_files.clone();
+                        //     info!("Calculating histograms");
+    
+                        //     self.processer.calculate_histograms();
+                        //     info!("Finished caluclating histograms");
+                        // }
+
+                        // ui.separator();
                     }
-                }
-            } else {
-                log::error!("LazyFrame is not loaded");
+                });
+            });
+
+            egui::SidePanel::right("plotter_right_panel").show_inside(ui, |ui| {
+                self.processer.select_histograms_ui(ui);
+            });
+
+            if self.workspacer.file_selecton {
+                egui::SidePanel::left("plotter_left_panel").show_inside(ui, |ui| {
+                    self.workspacer.file_selection_ui_side_panel(ui);
+                });
             }
-        } else {
-            log::error!("LazyFramer is not initialized");
-        }
+
+            egui::CentralPanel::default().show_inside(ui, |ui| {
+                self.processer.render_histos(ui);
+            });
+
+        });
+
     }
+
+    
+}
+
+
+
     
     /* 
     fn cutter_ui(&mut self, ui: &mut egui::Ui) {
@@ -225,91 +208,3 @@ impl PlotterApp {
             }
         }
     }*/
-
-}
-
-
-impl App for PlotterApp {
-    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-
-        let mut size = ctx.screen_rect().size();
-        size.x -= 50.0; // Subtract 50 from the width
-        size.y -= 100.0; // Subtract 50 from the height
-
-        egui::Window::new("Plotter").max_size(size).show(ctx, |ui| {
-
-
-            egui::TopBottomPanel::top("plotter_top_panel").show_inside(ui, |ui| {
-
-                egui::menu::bar(ui, |ui| {
-
-                    ui.menu_button("Workspace", |ui| {
-
-                        // self.workspace.select_directory_ui(ui);
-                        // self.workspace.file_selection_settings_ui(ui);
-                        // self.workspace.file_selection_ui_in_menu(ui);
-
-                        self.workspace.workspace_ui(ui);
-                    });
-
-                    ui.separator();
-
-                    if ui.button("Calculate histograms").clicked() {
-                        self.flags.histograms_loaded = false;
-                        self.create_lazyframe_from_selected_files();
-                        info!("Calculating histograms");
-                        self.perform_histogrammer_from_lazyframe();
-                        self.flags.histograms_loaded = true;
-                        info!("Finished caluclating histograms");
-                    }
-
-                    ui.separator();
-
-                    // Checkbox to toggle the visibility of the cutter UI
-                    ui.checkbox(&mut self.flags.show_cutter, "Cut Handler");
-
-                    if self.flags.show_cutter {
-                        if ui.button("Filter LazyFrame").clicked() {
-                            self.flags.cutter_filter_lazyframe = true;
-                        }
-                    }
-
-                });
-
-                // if self.flags.show_cutter {
-                //     ui.separator();
-                //     // self.cutter_ui(ui);
-                // } else {
-                //     self.cut_handler.draw_flag = false;
-                // }
-
-            });
-
-            // egui::TopBottomPanel::bottom("plotter_bottom_panel").resizable(true).show_inside(ui, |ui| {
-                // self.fitter.interactive_keybinds(ui);
-            // });
-
-            egui::SidePanel::right("plotter_right_panel").show_inside(ui, |ui| {
-                self.processer.select_histograms_ui(ui);
-            });
-
-            if self.workspace.file_selecton {
-                egui::SidePanel::left("plotter_left_panel").show_inside(ui, |ui| {
-                    self.workspace.file_selection_ui_side_panel(ui);
-                });
-            }
-
-            egui::CentralPanel::default().show_inside(ui, |ui| {
-                self.processer.render_histos(ui);
-                
-            });
-
-        });
-
-    }
-
-    
-}
-
-
-

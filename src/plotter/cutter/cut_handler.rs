@@ -14,6 +14,7 @@ pub struct CutHandler {
     pub active_cut_id: Option<String>,
     pub column_names: Vec<String>,
     pub draw_flag: bool,
+    pub selected_cut: Option<String>,
 }
 
 impl CutHandler {
@@ -24,12 +25,15 @@ impl CutHandler {
             active_cut_id: None,
             column_names: Vec::new(),
             draw_flag: true,
+            selected_cut: None,
         }
     }
 
     // Adds a new cut and makes it the active one
     pub fn add_new_cut(&mut self) {
+        self.draw_flag = true;
         let new_id = format!("cut_{}", self.cuts.len() + 1);
+        self.selected_cut = Some(new_id.clone());
         self.cuts.insert(new_id.clone(), EditableEguiPolygon::new(self.column_names.clone()));
         self.active_cut_id = Some(new_id); // Automatically make the new cut active
     }
@@ -64,7 +68,7 @@ impl CutHandler {
         Ok(filtered_lf)
     }
 
-    pub fn filter_files_and_save_to_one_file(&mut self, file_paths: Vec<PathBuf>, output_path: &PathBuf) -> Result<(), PolarsError> {
+    pub fn _filter_files_and_save_to_one_file(&mut self, file_paths: Vec<PathBuf>, output_path: &PathBuf) -> Result<(), PolarsError> {
 
         let files_arc: Arc<[PathBuf]> = Arc::from(file_paths.clone());
 
@@ -130,17 +134,72 @@ impl CutHandler {
     pub fn cut_handler_ui(&mut self, ui: &mut egui::Ui) {
 
         ui.horizontal(|ui| {
+
+            ui.label("Cutter: ");
         
             if ui.button("New Cut").clicked() {
                 self.add_new_cut();
             }
 
-            ui.separator();
+            // only display the cut selection UI if there are cuts
+            if !self.cuts.is_empty() {
+                self.select_cut_ui(ui);
+            }
 
-
-            ui.separator();
+            self.selected_cut_ui(ui);
 
         });
+    }
+
+    pub fn select_cut_ui(&mut self, ui: &mut egui::Ui) {
+        // Start with a separator for visual clarity
+        ui.separator();
+    
+        // Label for the combo box to indicate its purpose
+        ui.label("Select Cut:");
+    
+        // Initialize a temporary variable for the selected cut ID for the combo box
+        let mut current_selection = self.selected_cut.clone().unwrap_or_default();
+    
+        // Create a combo box to list all available cuts
+        egui::ComboBox::from_label("")
+            .selected_text(current_selection.clone())
+            .show_ui(ui, |ui| {
+                // Iterate over all cut IDs in the HashMap and add them as selectable items
+                for (cut_id, _) in &self.cuts {
+                    ui.selectable_value(&mut current_selection, cut_id.clone(), cut_id);
+                }
+            });
+    
+        // Check if the selection has changed, and update the selected cut ID accordingly
+        if current_selection != self.selected_cut.clone().unwrap_or_default() {
+            self.selected_cut = Some(current_selection);
+        }
+    }
+    
+    pub fn selected_cut_ui(&mut self, ui: &mut egui::Ui) {
+
+        // Display UI for the selected cut
+        if let Some(selected_id) = &self.selected_cut {
+            if let Some(selected_cut) = self.cuts.get_mut(selected_id) {
+
+
+
+                selected_cut.cut_ui(ui); // Display the `cut_ui` of the selected cut
+                
+                // check box to draw/edit the cut
+                ui.checkbox(&mut self.draw_flag, "Draw");
+                
+                ui.separator();
+
+                // button to remove cut
+                if ui.button("Delete").clicked() {
+                    self.cuts.remove(selected_id);
+                    self.selected_cut = None;
+                }
+            }
+        }
+
     }
 }
 

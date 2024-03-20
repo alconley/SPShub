@@ -1,7 +1,8 @@
 use polars::prelude::*;
 use std::path::PathBuf;
 use std::sync::Arc;
-
+use std::fs::File;
+   
 pub struct LazyFramer {
     pub lazyframe: Option<LazyFrame>,
     pub columns: Vec<String>,
@@ -33,6 +34,10 @@ impl LazyFramer {
         }
     }
 
+    pub fn set_lazyframe(&mut self, lazyframe: LazyFrame) {
+        self.lazyframe = Some(lazyframe);
+    }
+
     pub fn get_column_names(&self) -> Vec<String> {
         self.columns.clone()
     }
@@ -46,21 +51,22 @@ impl LazyFramer {
         columns 
     }
 
+    pub fn save_lazyframe(&mut self, output_path: &PathBuf) -> Result<(), PolarsError> {
+        if let Some(ref lf) = self.lazyframe {
+
+            let mut df = lf.clone().collect()?;
+
+            // Open a file in write mode at the specified output path
+            let file = File::create(output_path)
+                .map_err(|e| PolarsError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+
+            // Write the filtered DataFrame to a Parquet file
+            ParquetWriter::new(file)
+                .set_parallel(true)
+                .finish(&mut df)?;
+        }
+        Ok(())
+    }
+
 }
 
-    // pub fn new(lazyframe: LazyFrame) -> Self {
-
-    //     // have to collect lazyframe to get the column names
-    //     // only take the first row to minimize work
-    //     // Assuming `lf` is your LazyFrame
-
-    //     let lf: LazyFrame = lazyframe.clone().limit(1); // Limit the LazyFrame to just the first row
-    //     // Now, collect the limited LazyFrame
-    //     let df: DataFrame = lf.collect().unwrap(); // Handle this Result appropriately in real code
-
-    //     let columns: Vec<String> = df.get_column_names_owned().into_iter().map(|name| name.to_string()).collect();
-    //     Self {
-    //         lazyframe,
-    //         columns,
-    //     }
-    // }

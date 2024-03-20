@@ -2,14 +2,14 @@ use std::path::{PathBuf, Path};
 use std::fs;
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
-pub struct Workspace {
+pub struct Workspacer {
     pub directory: Option<PathBuf>,
     pub files: Vec<PathBuf>,
     pub selected_files: Vec<PathBuf>,
     pub file_selecton: bool,
 }
 
-impl Workspace {
+impl Workspacer {
     pub fn new() -> Self {
         Self {
             directory: None,

@@ -2,7 +2,7 @@ use polars::prelude::*;
 use std::f64::consts::PI;
 use super::histogrammer::Histogrammer;
 
-pub fn add_histograms(lf: LazyFrame) -> Result<Histogrammer, PolarsError> {
+pub fn sps_histograms(lf: LazyFrame) -> Result<Histogrammer, PolarsError> {
     
     let mut h = Histogrammer::new();
 

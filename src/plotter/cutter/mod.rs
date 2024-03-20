@@ -1,2 +1,2 @@
 pub mod egui_polygon;
-pub mod cut;
+pub mod cut_handler;
