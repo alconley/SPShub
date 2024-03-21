@@ -67,6 +67,66 @@ impl Processer {
         }
     }
 
+    fn custom_plot_manipulation(plot_ui: &mut egui_plot::PlotUi, scroll: Option<egui::Vec2>, pointer_down: bool, modifiers: egui::Modifiers) {
+
+        /* For custom plot manipulation settings, add this before the plot.show() 
+            let (scroll, pointer_down, modifiers) = ui.input(|i| {
+                let scroll = i.events.iter().find_map(|e| match e {
+                    egui::Event::MouseWheel { delta, .. } => Some(*delta),
+                    _ => None,
+                });
+                (scroll, i.pointer.primary_down(), i.modifiers)
+            });
+        */
+        
+        if plot_ui.response().hovered() {
+            if let Some(mut scroll) = scroll {
+                // Default behavior for zooming and panning, with fixed parameters
+                let lock_x = false;
+                let lock_y = false;
+                let zoom_speed = 1.0; // Default zoom speed
+                let scroll_speed = 1.0; // Default scroll speed
+                let ctrl_to_zoom = false;
+                let shift_to_horizontal = false;
+    
+                if modifiers.ctrl == ctrl_to_zoom {
+                    scroll = egui::Vec2::splat(scroll.x + scroll.y);
+                    let mut zoom_factor = egui::Vec2::from([
+                        (scroll.x * zoom_speed / 15.0).exp(),
+                        (scroll.y * zoom_speed / 15.0).exp(),
+                    ]);
+                    if lock_x {
+                        zoom_factor.x = 1.0;
+                    }
+                    if lock_y {
+                        zoom_factor.y = 1.0;
+                    }
+                    plot_ui.zoom_bounds_around_hovered(zoom_factor);
+                } else {
+                    if modifiers.shift == shift_to_horizontal {
+                        scroll = egui::Vec2::new(scroll.y, scroll.x);
+                    }
+                    if lock_x {
+                        scroll.x = 0.0;
+                    }
+                    if lock_y {
+                        scroll.y = 0.0;
+                    }
+                    let delta_pos = scroll_speed * scroll;
+                    plot_ui.translate_bounds(delta_pos);
+                }
+            }
+    
+            if pointer_down {
+                let pointer_translate = -plot_ui.pointer_coordinate_drag_delta();
+                // Lock axis functionality removed for simplification, add if needed
+                plot_ui.translate_bounds(pointer_translate);
+            }
+        }
+
+
+    }
+
     pub fn select_histograms_ui(&mut self, ui: &mut egui::Ui) {
         ui.label("Histograms"); // Label for the histogram buttons.
         
@@ -106,9 +166,19 @@ impl Processer {
         }
     }
 
-    pub fn render_1d_histogram(&mut self, ui: &mut egui::Ui) {
+    fn render_1d_histogram(&mut self, ui: &mut egui::Ui) {
         if let Some(hist_name) = self.selected_histograms.first() {
             if let Some(HistogramTypes::Hist1D(hist)) = self.histogrammer.histogram_list.get(hist_name.as_str()) {
+
+                /* For custom 2d histogram plot manipulation settings*/
+                let (scroll, pointer_down, modifiers) = ui.input(|i| {
+                    let scroll = i.events.iter().find_map(|e| match e {
+                        egui::Event::MouseWheel { delta, .. } => Some(*delta),
+                        _ => None,
+                    });
+                    (scroll, i.pointer.primary_down(), i.modifiers)
+                });
+
                 
                 let fit_handler = self.fit_handler.entry(hist_name.clone()).or_insert_with(FitHandler::new);
                 fit_handler.histogram = Some(hist.clone()); // Set the histogram for the fit handler
@@ -116,12 +186,11 @@ impl Processer {
 
                 let plot = Plot::new(&hist_name)
                     .legend(Legend::default())
-                    .clamp_grid(true)
                     .allow_drag(false)
                     .allow_zoom(false)
                     .allow_boxed_zoom(true)
                     .auto_bounds(egui::Vec2b::new(true, true))
-                    .allow_scroll(true);
+                    .allow_scroll(false);
     
                 
                 let color = if ui.ctx().style().visuals.dark_mode {
@@ -132,7 +201,10 @@ impl Processer {
                     egui::Color32::BLACK
                 };
     
-                plot.show(ui, |plot_ui| { 
+                plot.show(ui, |plot_ui| {
+
+                    Self::custom_plot_manipulation(plot_ui, scroll, pointer_down, modifiers);
+
                     let plot_min_x = plot_ui.plot_bounds().min()[0];
                     let plot_max_x = plot_ui.plot_bounds().max()[0];
 
@@ -161,10 +233,10 @@ impl Processer {
 
     }
 
-    pub fn render_2d_histogram(&mut self, ui: &mut egui::Ui) {
+    fn render_2d_histogram(&mut self, ui: &mut egui::Ui) {
         if let Some(hist_name) = self.selected_histograms.first() {
             if let Some(HistogramTypes::Hist2D(hist)) = self.histogrammer.histogram_list.get(hist_name.as_str()) {
-                
+
                 // cut handler ui
                 self.cut_handler.cut_handler_ui(ui);
 
@@ -181,7 +253,7 @@ impl Processer {
                     egui::Color32::DARK_BLUE
                 };
 
-                /* For custom 2d histogram plot manipulation settings*/
+                /* For custom plot manipulation settings*/
                 let (scroll, pointer_down, modifiers) = ui.input(|i| {
                     let scroll = i.events.iter().find_map(|e| match e {
                         egui::Event::MouseWheel { delta, .. } => Some(*delta),
@@ -192,52 +264,7 @@ impl Processer {
 
                 plot.show(ui, |plot_ui| { 
 
-                    /* Custom plot manipulation settings */
-                    if plot_ui.response().hovered() {
-                        if let Some(mut scroll) = scroll {
-                            // Default behavior for zooming and panning, with fixed parameters
-                            let lock_x = false;
-                            let lock_y = false;
-                            let zoom_speed = 1.0; // Default zoom speed
-                            let scroll_speed = 1.0; // Default scroll speed
-                            let ctrl_to_zoom = false;
-                            let shift_to_horizontal = false;
-                
-                            if modifiers.ctrl == ctrl_to_zoom {
-                                scroll = egui::Vec2::splat(scroll.x + scroll.y);
-                                let mut zoom_factor = egui::Vec2::from([
-                                    (scroll.x * zoom_speed / 15.0).exp(),
-                                    (scroll.y * zoom_speed / 15.0).exp(),
-                                ]);
-                                if lock_x {
-                                    zoom_factor.x = 1.0;
-                                }
-                                if lock_y {
-                                    zoom_factor.y = 1.0;
-                                }
-                                plot_ui.zoom_bounds_around_hovered(zoom_factor);
-                            } else {
-                                if modifiers.shift == shift_to_horizontal {
-                                    scroll = egui::Vec2::new(scroll.y, scroll.x);
-                                }
-                                if lock_x {
-                                    scroll.x = 0.0;
-                                }
-                                if lock_y {
-                                    scroll.y = 0.0;
-                                }
-                                let delta_pos = scroll_speed * scroll;
-                                plot_ui.translate_bounds(delta_pos);
-                            }
-                        }
-                
-                        if pointer_down {
-                            let pointer_translate = -plot_ui.pointer_coordinate_drag_delta();
-                            // Lock axis functionality removed for simplification, add if needed
-                            plot_ui.translate_bounds(pointer_translate);
-                        }
-                    }
-
+                    Self::custom_plot_manipulation(plot_ui, scroll, pointer_down, modifiers);
 
                     let plot_min_x = plot_ui.plot_bounds().min()[0];
                     let plot_max_x = plot_ui.plot_bounds().max()[0];
@@ -268,21 +295,32 @@ impl Processer {
         }
     }
 
-    pub fn render_multiple_histograms(&mut self, ui: &mut egui::Ui) {
+    fn render_multiple_histograms(&mut self, ui: &mut egui::Ui) {
+
+        let (scroll, pointer_down, modifiers) = ui.input(|i| {
+            let scroll = i.events.iter().find_map(|e| match e {
+                egui::Event::MouseWheel { delta, .. } => Some(*delta),
+                _ => None,
+            });
+            (scroll, i.pointer.primary_down(), i.modifiers)
+        });
+        
 
         // Set up the plot for the combined histogram display.
         let plot = Plot::new("Combined Histogram")
             .legend(Legend::default())
-            .clamp_grid(true)
+            .clamp_grid(false)
             .allow_drag(false)
             .allow_zoom(false)
             .allow_boxed_zoom(true)
             .auto_bounds(egui::Vec2b::new(true, true))
-            .allow_scroll(true);
+            .allow_scroll(false);
 
         // Display the plot in the UI.
         plot.show(ui, |plot_ui| {
-            
+
+            Self::custom_plot_manipulation(plot_ui, scroll, pointer_down, modifiers);
+
             // Define a set of colors for the histograms.
             let colors: [egui::Color32; 5] = [
                 egui::Color32::LIGHT_BLUE, 

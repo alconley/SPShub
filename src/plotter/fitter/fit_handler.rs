@@ -66,18 +66,24 @@ impl FitHandler {
         // buttons that will be displayed in the ui
         ui.horizontal(|ui| {
 
-            if ui.button("Fit").on_hover_text("Fit the current histogram data. Shortcut: 'F' key").clicked() {
-                self.fit();
+            // check to see if there is at least 2 region markers
+            if self.markers.region_markers.len() == 2 {
+                if ui.button("Fit").on_hover_text("Fit the current histogram data. Shortcut: 'F' key").clicked() {
+                    self.fit();
+                }
             }
 
             if self.current_fit.is_some() {
                 if ui.button("Store fit").on_hover_text("Store the current fit for comparison. Shortcut: 'S' key").clicked() {
                     self.store_fit();
                 }
+
+                ui.separator();
+
             }
 
-            ui.separator();
 
+            /* 
             ui.label("Clear Markers: ").on_hover_text("The closest marker to the cursor can be removed using the '-' key");
             if ui.button("Peak").on_hover_text("Clear peak markers").clicked() {
                 self.current_fit = None;
@@ -99,6 +105,8 @@ impl FitHandler {
             }
 
             ui.separator();
+
+            */
 
             ui.checkbox(&mut self.show_fit_stats, "Show Fit Stats");
 
@@ -172,7 +180,7 @@ impl FitHandler {
                                     ui.label(format!("{}", index)); // Fit number
                                     ui.label(format!("{:.2} ± {:.2}", param.mean.0, param.mean.1)); // Mean
                                     ui.label(format!("{:.2} ± {:.2}", param.fwhm.0, param.fwhm.1)); // FWHM
-                                    ui.label(format!("{:.2} ± {:.2}", param.area.0, param.area.1)); // Area
+                                    ui.label(format!("{:.0} ± {:.0}", param.area.0, param.area.1)); // Area
                                     ui.end_row(); // Move to the next row for the next set of stats
                                 }
                         });
@@ -208,7 +216,7 @@ impl FitHandler {
                                         ui.label(format!("{}-{}", fit_index, param_index)); // Fit and parameter index
                                         ui.label(format!("{:.2} ± {:.2}", param.mean.0, param.mean.1)); // Mean
                                         ui.label(format!("{:.2} ± {:.2}", param.fwhm.0, param.fwhm.1)); // FWHM
-                                        ui.label(format!("{:.2} ± {:.2}", param.area.0, param.area.1)); // Area
+                                        ui.label(format!("{:.0} ± {:.0}", param.area.0, param.area.1)); // Area
                                         ui.end_row(); // Move to the next row for the next set of stats
                                     }
                                 }
