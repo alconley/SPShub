@@ -169,13 +169,11 @@ impl Processer {
                 self.cut_handler.cut_handler_ui(ui);
 
                 let plot = Plot::new(&hist_name)
-                    .legend(Legend::default())
-                    .clamp_grid(true)
-                    .allow_drag(false)
                     .allow_zoom(false)
-                    .allow_boxed_zoom(true)
-                    .auto_bounds(egui::Vec2b::new(true, true))
-                    .allow_scroll(true);
+                    .allow_drag(false)
+                    .allow_scroll(false)
+                    .legend(Legend::default())
+                    .auto_bounds(egui::Vec2b::new(true, true));
 
                 let color = if ui.ctx().style().visuals.dark_mode {
                     egui::Color32::LIGHT_BLUE
@@ -183,7 +181,64 @@ impl Processer {
                     egui::Color32::DARK_BLUE
                 };
 
+                /* For custom 2d histogram plot manipulation settings*/
+                let (scroll, pointer_down, modifiers) = ui.input(|i| {
+                    let scroll = i.events.iter().find_map(|e| match e {
+                        egui::Event::MouseWheel { delta, .. } => Some(*delta),
+                        _ => None,
+                    });
+                    (scroll, i.pointer.primary_down(), i.modifiers)
+                });
+
                 plot.show(ui, |plot_ui| { 
+
+                    /* Custom plot manipulation settings */
+                    if plot_ui.response().hovered() {
+                        if let Some(mut scroll) = scroll {
+                            // Default behavior for zooming and panning, with fixed parameters
+                            let lock_x = false;
+                            let lock_y = false;
+                            let zoom_speed = 1.0; // Default zoom speed
+                            let scroll_speed = 1.0; // Default scroll speed
+                            let ctrl_to_zoom = false;
+                            let shift_to_horizontal = false;
+                
+                            if modifiers.ctrl == ctrl_to_zoom {
+                                scroll = egui::Vec2::splat(scroll.x + scroll.y);
+                                let mut zoom_factor = egui::Vec2::from([
+                                    (scroll.x * zoom_speed / 15.0).exp(),
+                                    (scroll.y * zoom_speed / 15.0).exp(),
+                                ]);
+                                if lock_x {
+                                    zoom_factor.x = 1.0;
+                                }
+                                if lock_y {
+                                    zoom_factor.y = 1.0;
+                                }
+                                plot_ui.zoom_bounds_around_hovered(zoom_factor);
+                            } else {
+                                if modifiers.shift == shift_to_horizontal {
+                                    scroll = egui::Vec2::new(scroll.y, scroll.x);
+                                }
+                                if lock_x {
+                                    scroll.x = 0.0;
+                                }
+                                if lock_y {
+                                    scroll.y = 0.0;
+                                }
+                                let delta_pos = scroll_speed * scroll;
+                                plot_ui.translate_bounds(delta_pos);
+                            }
+                        }
+                
+                        if pointer_down {
+                            let pointer_translate = -plot_ui.pointer_coordinate_drag_delta();
+                            // Lock axis functionality removed for simplification, add if needed
+                            plot_ui.translate_bounds(pointer_translate);
+                        }
+                    }
+
+
                     let plot_min_x = plot_ui.plot_bounds().min()[0];
                     let plot_max_x = plot_ui.plot_bounds().max()[0];
                     let plot_min_y = plot_ui.plot_bounds().min()[1];
@@ -393,4 +448,5 @@ impl Processer {
         ui.separator();
 
     }
+
 }
