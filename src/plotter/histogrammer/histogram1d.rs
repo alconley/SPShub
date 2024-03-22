@@ -10,7 +10,7 @@ impl Histogram {
     pub fn new(number_of_bins: usize, range: (f64, f64)) -> Self {
         Histogram {
             bins: vec![0; number_of_bins],
-            range : range,
+            range: range,
             bin_width: (range.1 - range.0) / number_of_bins as f64,
         }
     }
@@ -30,9 +30,9 @@ impl Histogram {
         if x < self.range.0 || x > self.range.1 {
             return None;
         }
-        
-        let bin_index: usize = (((x - self.range.0)) / self.bin_width).floor() as usize;
-        
+
+        let bin_index: usize = ((x - self.range.0) / self.bin_width).floor() as usize;
+
         Some(bin_index)
     }
 
@@ -45,7 +45,8 @@ impl Histogram {
 
         for bin in start_bin..=end_bin {
             if bin < self.bins.len() {
-                let bin_center = self.range.0 + (bin as f64 * self.bin_width) + self.bin_width * 0.5;
+                let bin_center =
+                    self.range.0 + (bin as f64 * self.bin_width) + self.bin_width * 0.5;
                 sum_product += self.bins[bin] as f64 * bin_center;
                 total_count += self.bins[bin];
             } else {
@@ -59,10 +60,11 @@ impl Histogram {
             let mean = sum_product / total_count as f64;
 
             let mut sum_squared_diff = 0.0;
-    
+
             for bin in start_bin..=end_bin {
                 if bin < self.bins.len() {
-                    let bin_center = self.range.0 + (bin as f64 * self.bin_width) + (self.bin_width * 0.5);
+                    let bin_center =
+                        self.range.0 + (bin as f64 * self.bin_width) + (self.bin_width * 0.5);
                     let diff = bin_center - mean;
                     sum_squared_diff += self.bins[bin] as f64 * diff * diff;
                 } else {
@@ -72,12 +74,10 @@ impl Histogram {
 
             let stdev = (sum_squared_diff / total_count as f64).sqrt();
 
-
             (total_count, mean, stdev)
-
         }
     }
-    
+
     pub fn step_histogram_points(&self) -> Vec<(f64, f64)> {
         let mut line_points: Vec<(f64, f64)> = Vec::new();
 
@@ -112,5 +112,4 @@ impl Histogram {
     //     }
     //     centers
     // }
-
 }

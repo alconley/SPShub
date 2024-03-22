@@ -1,8 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fmt::Display;
 use std::fs;
 use std::path::{Path, PathBuf};
-use serde::{Serialize, Deserialize};
 
 const RAW_BINARY: &str = "raw_binary";
 const TEMP_BINARY: &str = "temp_binary";
@@ -12,7 +12,7 @@ const SCALERS: &str = "scalers";
 #[derive(Debug, Clone)]
 pub enum WorkspaceError {
     ParentError,
-    SubdirectoryError
+    SubdirectoryError,
 }
 
 impl Display for WorkspaceError {
@@ -25,7 +25,7 @@ impl Display for WorkspaceError {
             WorkspaceError::SubdirectoryError => write!(
                 f,
                 "A required subdirectory in workspace does not exist and could not be created!"
-            )
+            ),
         }
     }
 }

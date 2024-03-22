@@ -1,10 +1,10 @@
+use super::compass_data::{CompassData, CompassDataType, RawCompassData};
+use super::error::EVBError;
+use super::shift_map::ShiftMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path;
-use super::compass_data::{CompassDataType, RawCompassData, CompassData};
-use super::error::EVBError;
-use super::shift_map::ShiftMap;
 
 use nom::number::complete::*;
 
@@ -13,21 +13,21 @@ const BUFFER_SIZE_HITS: usize = 24000; // Size in Compass hits of the buffer for
 fn parse_u16(buffer: &[u8]) -> Result<(&[u8], u16), EVBError> {
     match le_u16::<&[u8], nom::error::Error<&[u8]>>(buffer) {
         Err(_x) => Err(EVBError::ParserError),
-        Ok(x) => Ok(x)
+        Ok(x) => Ok(x),
     }
 }
 
 fn parse_u32(buffer: &[u8]) -> Result<(&[u8], u32), EVBError> {
     match le_u32::<&[u8], nom::error::Error<&[u8]>>(buffer) {
         Err(_x) => Err(EVBError::ParserError),
-        Ok(x) => Ok(x)
+        Ok(x) => Ok(x),
     }
 }
 
 fn parse_u64(buffer: &[u8]) -> Result<(&[u8], u64), EVBError> {
     match le_u64::<&[u8], nom::error::Error<&[u8]>>(buffer) {
         Err(_x) => Err(EVBError::ParserError),
-        Ok(x) => Ok(x)
+        Ok(x) => Ok(x),
     }
 }
 
@@ -40,15 +40,18 @@ pub struct CompassFile<'a> {
     current_hit: CompassData,
     shift_map: &'a Option<ShiftMap>,
     is_used: bool,
-    is_eof: bool
+    is_eof: bool,
 }
 
 impl<'a> CompassFile<'a> {
-    pub fn new(path: &path::Path, shifts: &'a Option<ShiftMap>) -> Result<CompassFile<'a>, EVBError> {
+    pub fn new(
+        path: &path::Path,
+        shifts: &'a Option<ShiftMap>,
+    ) -> Result<CompassFile<'a>, EVBError> {
         let mut file: File = File::open(path)?;
         let total_size = file.metadata()?.len();
 
-        let mut header:[u8; 2] = [0; 2];
+        let mut header: [u8; 2] = [0; 2];
         file.read_exact(&mut header)?;
         let header_word = u16::from_le_bytes(header);
 
@@ -70,7 +73,6 @@ impl<'a> CompassFile<'a> {
         if header_word & CompassDataType::WAVES.bits() != 0 {
             return Err(EVBError::WavesError);
         }
-        
 
         return Ok(CompassFile {
             file_handle: BufReader::with_capacity(datasize * BUFFER_SIZE_HITS, file),
@@ -80,20 +82,25 @@ impl<'a> CompassFile<'a> {
             current_hit: CompassData::default(),
             shift_map: shifts,
             is_used: false,
-            is_eof: false
+            is_eof: false,
         });
-
     }
 
     pub fn get_top_hit(&mut self) -> Result<&CompassData, EVBError> {
         if self.is_used {
             self.current_hit = match self.parse_top_hit() {
                 Err(EVBError::FileError(e)) => match e.kind() {
-                    std::io::ErrorKind::UnexpectedEof => { self.is_eof = true; CompassData::default() },
-                    _ => return Err(EVBError::FileError(e))
+                    std::io::ErrorKind::UnexpectedEof => {
+                        self.is_eof = true;
+                        CompassData::default()
+                    }
+                    _ => return Err(EVBError::FileError(e)),
+                },
+                Ok(data) => {
+                    self.is_used = false;
+                    data
                 }
-                Ok(data) => { self.is_used = false; data},
-                Err(x) => return Err(x)
+                Err(x) => return Err(x),
             }
         }
 
@@ -101,8 +108,14 @@ impl<'a> CompassFile<'a> {
     }
 
     fn parse_top_hit(&mut self) -> Result<CompassData, EVBError> {
-
-        let mut raw_data = RawCompassData{board: 0, channel: 0, timestamp: 0, energy: 0, energy_calibrated: 0, energy_short: 0};
+        let mut raw_data = RawCompassData {
+            board: 0,
+            channel: 0,
+            timestamp: 0,
+            energy: 0,
+            energy_calibrated: 0,
+            energy_short: 0,
+        };
 
         let mut dataword: Vec<u8> = vec![0; self.data_size_bytes];
         self.file_handle.read_exact(&mut dataword)?;

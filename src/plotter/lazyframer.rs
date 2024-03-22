@@ -1,8 +1,8 @@
 use polars::prelude::*;
+use std::fs::File;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::fs::File;
-   
+
 pub struct LazyFramer {
     pub lazyframe: Option<LazyFrame>,
     pub columns: Vec<String>,
@@ -21,7 +21,7 @@ impl LazyFramer {
 
                 Self {
                     lazyframe: Some(lf),
-                    columns: column_names, 
+                    columns: column_names,
                 }
             }
             Err(e) => {
@@ -45,15 +45,18 @@ impl LazyFramer {
     // Adjusted signature to match context
     pub fn get_column_names_from_lazyframe(lazyframe: &LazyFrame) -> Vec<String> {
         let lf: LazyFrame = lazyframe.clone().limit(1);
-        let df: DataFrame = lf.collect().unwrap(); 
-        let columns: Vec<String> = df.get_column_names_owned().into_iter().map(|name| name.to_string()).collect();
+        let df: DataFrame = lf.collect().unwrap();
+        let columns: Vec<String> = df
+            .get_column_names_owned()
+            .into_iter()
+            .map(|name| name.to_string())
+            .collect();
 
-        columns 
+        columns
     }
 
     pub fn save_lazyframe(&mut self, output_path: &PathBuf) -> Result<(), PolarsError> {
         if let Some(ref lf) = self.lazyframe {
-
             let mut df = lf.clone().collect()?;
 
             // Open a file in write mode at the specified output path
@@ -67,6 +70,4 @@ impl LazyFramer {
         }
         Ok(())
     }
-
 }
-

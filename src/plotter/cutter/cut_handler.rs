@@ -1,9 +1,9 @@
 use super::egui_polygon::EditableEguiPolygon;
 
 use std::collections::HashMap;
-use std::path::PathBuf;
-use std::fs::File;
 use std::ffi::OsStr;
+use std::fs::File;
+use std::path::PathBuf;
 
 use egui_plot::PlotUi;
 use polars::prelude::*;
@@ -34,7 +34,10 @@ impl CutHandler {
         self.draw_flag = true;
         let new_id = format!("cut_{}", self.cuts.len() + 1);
         self.selected_cut = Some(new_id.clone());
-        self.cuts.insert(new_id.clone(), EditableEguiPolygon::new(self.column_names.clone()));
+        self.cuts.insert(
+            new_id.clone(),
+            EditableEguiPolygon::new(self.column_names.clone()),
+        );
         self.active_cut_id = Some(new_id); // Automatically make the new cut active
     }
 
@@ -68,8 +71,11 @@ impl CutHandler {
         Ok(filtered_lf)
     }
 
-    pub fn _filter_files_and_save_to_one_file(&mut self, file_paths: Vec<PathBuf>, output_path: &PathBuf) -> Result<(), PolarsError> {
-
+    pub fn _filter_files_and_save_to_one_file(
+        &mut self,
+        file_paths: Vec<PathBuf>,
+        output_path: &PathBuf,
+    ) -> Result<(), PolarsError> {
         let files_arc: Arc<[PathBuf]> = Arc::from(file_paths.clone());
 
         let args = ScanArgsParquet::default();
@@ -93,29 +99,35 @@ impl CutHandler {
             .finish(&mut filtered_df)?;
 
         Ok(())
-        
     }
 
-    pub fn _filter_files_and_save_separately(&mut self, file_paths: Vec<PathBuf>, output_dir: &PathBuf, custom_text: &str) -> Result<(), PolarsError> {
-    
+    pub fn _filter_files_and_save_separately(
+        &mut self,
+        file_paths: Vec<PathBuf>,
+        output_dir: &PathBuf,
+        custom_text: &str,
+    ) -> Result<(), PolarsError> {
         for file_path in file_paths.iter() {
-
             let args = ScanArgsParquet::default();
 
             let file_arc: Arc<PathBuf> = Arc::from(file_path.clone());
 
             // Construct a LazyFrame for each file
             let lf = LazyFrame::scan_parquet(file_arc.as_ref(), args.clone())?;
-    
+
             // Apply filtering logic as before, leading to a filtered LazyFrame
             let filtered_lf = self.filter_lf_with_all_cuts(&lf)?; // Placeholder for applying cuts
-    
+
             // Collect the LazyFrame into a DataFrame
             let mut filtered_df = filtered_lf.collect()?;
-    
+
             // Generate a new output file name by appending custom text to the original file name
             let original_file_name = file_path.file_stem().unwrap_or(OsStr::new("default"));
-            let new_file_name = format!("{}_{}.parquet", original_file_name.to_string_lossy(), custom_text);
+            let new_file_name = format!(
+                "{}_{}.parquet",
+                original_file_name.to_string_lossy(),
+                custom_text
+            );
             let output_file_path = output_dir.join(new_file_name);
 
             // Open a file in write mode at the newly specified output path
@@ -126,17 +138,15 @@ impl CutHandler {
             ParquetWriter::new(file)
                 .set_parallel(true)
                 .finish(&mut filtered_df)?;
-                    }
-    
+        }
+
         Ok(())
     }
 
     pub fn cut_handler_ui(&mut self, ui: &mut egui::Ui) {
-
         ui.horizontal(|ui| {
-
             ui.label("Cutter: ");
-        
+
             if ui.button("New Cut").clicked() {
                 self.add_new_cut();
             }
@@ -147,20 +157,19 @@ impl CutHandler {
             }
 
             self.selected_cut_ui(ui);
-
         });
     }
 
     pub fn select_cut_ui(&mut self, ui: &mut egui::Ui) {
         // Start with a separator for visual clarity
         ui.separator();
-    
+
         // Label for the combo box to indicate its purpose
         ui.label("Select Cut:");
-    
+
         // Initialize a temporary variable for the selected cut ID for the combo box
         let mut current_selection = self.selected_cut.clone().unwrap_or_default();
-    
+
         // Create a combo box to list all available cuts
         egui::ComboBox::from_label("")
             .selected_text(current_selection.clone())
@@ -170,26 +179,22 @@ impl CutHandler {
                     ui.selectable_value(&mut current_selection, cut_id.clone(), cut_id);
                 }
             });
-    
+
         // Check if the selection has changed, and update the selected cut ID accordingly
         if current_selection != self.selected_cut.clone().unwrap_or_default() {
             self.selected_cut = Some(current_selection);
         }
     }
-    
-    pub fn selected_cut_ui(&mut self, ui: &mut egui::Ui) {
 
+    pub fn selected_cut_ui(&mut self, ui: &mut egui::Ui) {
         // Display UI for the selected cut
         if let Some(selected_id) = &self.selected_cut {
             if let Some(selected_cut) = self.cuts.get_mut(selected_id) {
-
-
-
                 selected_cut.cut_ui(ui); // Display the `cut_ui` of the selected cut
-                
+
                 // check box to draw/edit the cut
                 ui.checkbox(&mut self.draw_flag, "Draw");
-                
+
                 ui.separator();
 
                 // button to remove cut
@@ -199,8 +204,5 @@ impl CutHandler {
                 }
             }
         }
-
     }
-
 }
-

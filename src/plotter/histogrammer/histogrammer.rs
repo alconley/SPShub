@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use eframe::egui::{Color32, Stroke};
+use std::collections::HashMap;
 
-use egui_plot::{Bar, Orientation, BarChart, Line, PlotPoints};
+use egui_plot::{Bar, BarChart, Line, Orientation, PlotPoints};
 use polars::prelude::*;
 
 use super::histogram1d::Histogram;
@@ -10,8 +10,7 @@ use super::histogram2d::Histogram2D;
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub enum HistogramTypes {
     Hist1D(Histogram),
-    Hist2D(Histogram2D) 
-
+    Hist2D(Histogram2D),
 }
 
 #[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
@@ -20,30 +19,31 @@ pub struct Histogrammer {
 }
 
 impl Histogrammer {
-
     // Creates a new instance of Histogrammer.
     pub fn new() -> Self {
         Self {
-            histogram_list: HashMap::new(), 
+            histogram_list: HashMap::new(),
         }
     }
 
     // Adds a new 1D histogram to the histogram list.
     pub fn add_hist1d(&mut self, name: &str, bins: usize, range: (f64, f64)) {
         let hist: Histogram = Histogram::new(bins, range); // Create a new histogram.
-        self.histogram_list.insert(name.to_string(), HistogramTypes::Hist1D(hist)); // Store it in the hashmap.
+        self.histogram_list
+            .insert(name.to_string(), HistogramTypes::Hist1D(hist)); // Store it in the hashmap.
     }
 
     // Fills a 1D histogram with data from a polars dataframe/column.
     pub fn fill_hist1d(&mut self, name: &str, lf: &LazyFrame, column_name: &str) -> bool {
         let hist: &mut Histogram = match self.histogram_list.get_mut(name) {
             Some(HistogramTypes::Hist1D(hist)) => hist,
-            _ => return false,  // Return false if the histogram doesn't exist.
+            _ => return false, // Return false if the histogram doesn't exist.
         };
 
         // Attempt to collect the LazyFrame into a DataFrame
-        let df_result = lf.clone()
-            .filter(col(column_name).neq(lit(-1e6)))  // Filter out the -1e6 values.
+        let df_result = lf
+            .clone()
+            .filter(col(column_name).neq(lit(-1e6))) // Filter out the -1e6 values.
             .select([col(column_name)])
             .collect();
 
@@ -66,27 +66,33 @@ impl Histogrammer {
                         }
 
                         true
-                    },
+                    }
                     Err(e) => {
                         // Handle the error, for example, log it or return an error
                         eprintln!("Failed to convert DataFrame to ndarray: {}", e);
                         false
                     }
                 }
-            },
+            }
             Err(e) => {
                 // Handle the error, for example, log it or return an error
                 eprintln!("Failed to collect LazyFrame: {}", e);
                 false
             }
         }
-
     }
 
     // Adds and fills a 1D histogram with data from a Polars LazyFrame.
-    pub fn add_fill_hist1d(&mut self, name: &str, lf: &LazyFrame, column_name: &str, bins: usize, range: (f64, f64)) {
-        self.add_hist1d(name, bins, range);  // Add the histogram.
-        self.fill_hist1d(name, lf, column_name);  // Fill it with data.
+    pub fn add_fill_hist1d(
+        &mut self,
+        name: &str,
+        lf: &LazyFrame,
+        column_name: &str,
+        bins: usize,
+        range: (f64, f64),
+    ) {
+        self.add_hist1d(name, bins, range); // Add the histogram.
+        self.fill_hist1d(name, lf, column_name); // Fill it with data.
     }
 
     // Generates a histogram using the bar chart from the `egui` library.
@@ -98,27 +104,41 @@ impl Histogrammer {
             let plot_points: PlotPoints = line_points.iter().map(|&(x, y)| [x, y]).collect();
 
             Some(Line::new(plot_points).color(color).name(name))
-
         } else {
             None
         }
     }
-    
+
     // Adds a new 2D histogram to the histogram list.
-    pub fn add_hist2d(&mut self, name: &str, x_bins: usize, x_range: (f64, f64), y_bins: usize, y_range: (f64, f64)) {
+    pub fn add_hist2d(
+        &mut self,
+        name: &str,
+        x_bins: usize,
+        x_range: (f64, f64),
+        y_bins: usize,
+        y_range: (f64, f64),
+    ) {
         let hist: Histogram2D = Histogram2D::new(x_bins, x_range, y_bins, y_range); // Create a new 2D histogram.
-        self.histogram_list.insert(name.to_string(), HistogramTypes::Hist2D(hist)); // Store it in the hashmap.
+        self.histogram_list
+            .insert(name.to_string(), HistogramTypes::Hist2D(hist)); // Store it in the hashmap.
     }
 
     // Fills a 2D histogram with x and y data.
-    pub fn fill_hist2d(&mut self, name: &str, lf: &LazyFrame, x_column_name: &str, y_column_name: &str) -> bool {
+    pub fn fill_hist2d(
+        &mut self,
+        name: &str,
+        lf: &LazyFrame,
+        x_column_name: &str,
+        y_column_name: &str,
+    ) -> bool {
         let hist: &mut Histogram2D = match self.histogram_list.get_mut(name) {
             Some(HistogramTypes::Hist2D(hist)) => hist,
             _ => return false, // Return false if the histogram doesn't exist.
         };
 
         // Attempt to collect the LazyFrame into a DataFrame
-        let df_result = lf.clone()
+        let df_result = lf
+            .clone()
             .select([col(x_column_name), col(y_column_name)])
             .filter(col(x_column_name).neq(lit(-1e6)))
             .filter(col(y_column_name).neq(lit(-1e6)))
@@ -145,14 +165,14 @@ impl Histogrammer {
                         }
 
                         true
-                    },
+                    }
                     Err(e) => {
                         // Handle the error, for example, log it or return an error
                         eprintln!("Failed to convert DataFrame to ndarray: {}", e);
                         false
                     }
                 }
-            },
+            }
             Err(e) => {
                 // Handle the error, for example, log it or return an error
                 eprintln!("Failed to collect LazyFrame: {}", e);
@@ -162,7 +182,17 @@ impl Histogrammer {
     }
 
     // Adds and fills a 2D histogram with data from Polars LazyFrame columns.
-    pub fn add_fill_hist2d(&mut self, name: &str, lf: &LazyFrame, x_column_name: &str, x_bins: usize, x_range: (f64, f64), y_column_name: &str, y_bins: usize, y_range: (f64, f64)) {
+    pub fn add_fill_hist2d(
+        &mut self,
+        name: &str,
+        lf: &LazyFrame,
+        x_column_name: &str,
+        x_bins: usize,
+        x_range: (f64, f64),
+        y_column_name: &str,
+        y_bins: usize,
+        y_range: (f64, f64),
+    ) {
         self.add_hist2d(name, x_bins, x_range, y_bins, y_range); // Add the histogram.
         self.fill_hist2d(name, lf, x_column_name, y_column_name); // Fill it with data.
     }
@@ -170,15 +200,14 @@ impl Histogrammer {
     // Generates a heatmap using the `egui` library based on a 2D histogram.
     pub fn egui_heatmap(&self, name: &str) -> Option<BarChart> {
         if let Some(HistogramTypes::Hist2D(hist)) = self.histogram_list.get(name) {
-            let bars_data = hist.generate_bar_data();           
+            let bars_data = hist.generate_bar_data();
             let mut bars = Vec::new();
 
             let min: u32 = hist.min_count;
             let max: u32 = hist.max_count;
             for bar_data in bars_data {
-
                 let color: Color32 = viridis_colormap(bar_data.count, min, max); // Determine color based on the count, using a colormap.
-                
+
                 let bar = Bar {
                     orientation: Orientation::Vertical,
                     argument: bar_data.x,
@@ -190,9 +219,8 @@ impl Histogrammer {
                     base_offset: Some(bar_data.y - bar_data.height / 2.0),
                 };
                 bars.push(bar);
-
             }
-    
+
             // Return a BarChart object if the histogram exists, otherwise return None.
             Some(BarChart::new(bars).name(name))
         } else {
@@ -200,7 +228,7 @@ impl Histogrammer {
         }
     }
 
-    // additional functions 
+    // additional functions
     pub fn get_histogram_list(&self) -> Vec<String> {
         let mut names: Vec<String> = self.histogram_list.keys().cloned().collect();
         names.sort();
@@ -211,7 +239,6 @@ impl Histogrammer {
     pub fn get_histogram_type(&self, name: &str) -> Option<&HistogramTypes> {
         self.histogram_list.get(name)
     }
-
 }
 
 // Function to generate a color based on a value using the Viridis colormap, the matplotlib default.
@@ -221,7 +248,8 @@ fn viridis_colormap(value: u32, min: u32, max: u32) -> Color32 {
         (value as f64 - min as f64) / (max as f64 - min as f64)
     } else {
         0.0
-    }.clamp(0.0, 1.0);
+    }
+    .clamp(0.0, 1.0);
 
     // Key colors from the Viridis colormap
     let viridis_colors: [(f32, f32, f32); 32] = [

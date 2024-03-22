@@ -1,6 +1,6 @@
 use std::fs::File;
-use std::path::Path;
 use std::io::{BufWriter, Write};
+use std::path::Path;
 
 use super::compass_file::CompassFile;
 
@@ -8,8 +8,7 @@ const INVALID_SCALER_PATTERN: &str = "InvalidScalerPattern";
 const INVALID_SCALER_NAME: &str = "InvalidScaler";
 const INVALID_SCALER_VALUE: u64 = 0;
 
-#[derive(serde::Deserialize, serde::Serialize)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct ScalerEntryUI {
     pub file_pattern: String,
     pub scaler_name: String,
@@ -19,30 +18,37 @@ pub struct ScalerEntryUI {
 struct Scaler {
     pub file_pattern: String,
     pub name: String,
-    pub value: u64
+    pub value: u64,
 }
 
 impl Default for Scaler {
     fn default() -> Self {
-        Scaler { file_pattern: INVALID_SCALER_PATTERN.to_string(), name: INVALID_SCALER_NAME.to_string(), value: INVALID_SCALER_VALUE }
+        Scaler {
+            file_pattern: INVALID_SCALER_PATTERN.to_string(),
+            name: INVALID_SCALER_NAME.to_string(),
+            value: INVALID_SCALER_VALUE,
+        }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ScalerList {
-    list: Vec<Scaler>
+    list: Vec<Scaler>,
 }
 
 impl ScalerList {
     // Adjusted to take a vector of ScalerEntryUI
     pub fn new(entries: Vec<ScalerEntryUI>) -> ScalerList {
-        let scalers = entries.into_iter().map(|entry| {
-            Scaler {
-                file_pattern: entry.file_pattern,
-                name: entry.scaler_name,
-                value: 0, // Assuming initial value is always 0
-            }
-        }).collect();
+        let scalers = entries
+            .into_iter()
+            .map(|entry| {
+                Scaler {
+                    file_pattern: entry.file_pattern,
+                    name: entry.scaler_name,
+                    value: 0, // Assuming initial value is always 0
+                }
+            })
+            .collect();
 
         ScalerList { list: scalers }
     }
@@ -52,20 +58,20 @@ impl ScalerList {
         for scaler in self.list.iter_mut() {
             match filepath.file_name() {
                 Some(file_name) => {
-                    if file_name.to_str()
-                                .expect("Could not parse file name at ScalerList::read_scaler")
-                                .starts_with(&scaler.file_pattern)
+                    if file_name
+                        .to_str()
+                        .expect("Could not parse file name at ScalerList::read_scaler")
+                        .starts_with(&scaler.file_pattern)
                     {
                         if let Ok(compass_rep) = CompassFile::new(filepath, &None) {
                             scaler.value = compass_rep.get_number_of_hits();
-                            return true
+                            return true;
                         }
+                    } else {
+                        continue;
                     }
-                    else {
-                        continue
-                    }
-                },
-                None => continue
+                }
+                None => continue,
             };
         }
 
@@ -79,7 +85,7 @@ impl ScalerList {
         writer.write("SPS Scaler Data\n".as_bytes())?;
         for scaler in &self.list {
             writer.write(format!("{} {}\n", scaler.name, scaler.value).as_bytes())?;
-        } 
+        }
         Ok(())
     }
 }

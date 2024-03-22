@@ -1,13 +1,13 @@
-use super::histogrammer::histogrammer::{Histogrammer, HistogramTypes};
-use super::histogrammer::histogram_script::add_histograms;
 use super::cutter::cut_handler::CutHandler;
 use super::fitter::fit_handler::FitHandler;
+use super::histogrammer::histogram_script::add_histograms;
+use super::histogrammer::histogrammer::{HistogramTypes, Histogrammer};
 use super::lazyframer::LazyFramer;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use egui_plot::{PlotPoint, Text, Plot, Legend};
+use egui_plot::{Legend, Plot, PlotPoint, Text};
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct Processer {
@@ -22,10 +22,8 @@ pub struct Processer {
     pub fit_handler: HashMap<String, FitHandler>,
 }
 
-
 impl Processer {
     pub fn new() -> Self {
-
         Self {
             lazyframer: None,
             files: Vec::new(),
@@ -51,10 +49,10 @@ impl Processer {
     fn perform_histogrammer_from_lazyframe(&mut self) {
         if let Some(lazyframer) = &self.lazyframer {
             if let Some(lf) = &lazyframer.lazyframe {
-                match add_histograms(lf.clone()) { 
+                match add_histograms(lf.clone()) {
                     Ok(h) => {
                         self.histogrammer = h;
-                    },
+                    }
                     Err(e) => {
                         log::error!("Failed to create histograms: {}", e);
                     }
@@ -67,9 +65,13 @@ impl Processer {
         }
     }
 
-    fn custom_plot_manipulation(plot_ui: &mut egui_plot::PlotUi, scroll: Option<egui::Vec2>, pointer_down: bool, modifiers: egui::Modifiers) {
-
-        /* For custom plot manipulation settings, add this before the plot.show() 
+    fn custom_plot_manipulation(
+        plot_ui: &mut egui_plot::PlotUi,
+        scroll: Option<egui::Vec2>,
+        pointer_down: bool,
+        modifiers: egui::Modifiers,
+    ) {
+        /* For custom plot manipulation settings, add this before the plot.show()
             let (scroll, pointer_down, modifiers) = ui.input(|i| {
                 let scroll = i.events.iter().find_map(|e| match e {
                     egui::Event::MouseWheel { delta, .. } => Some(*delta),
@@ -78,7 +80,7 @@ impl Processer {
                 (scroll, i.pointer.primary_down(), i.modifiers)
             });
         */
-        
+
         if plot_ui.response().hovered() {
             if let Some(mut scroll) = scroll {
                 // Default behavior for zooming and panning, with fixed parameters
@@ -88,7 +90,7 @@ impl Processer {
                 let scroll_speed = 1.0; // Default scroll speed
                 let ctrl_to_zoom = false;
                 let shift_to_horizontal = false;
-    
+
                 if modifiers.ctrl == ctrl_to_zoom {
                     scroll = egui::Vec2::splat(scroll.x + scroll.y);
                     let mut zoom_factor = egui::Vec2::from([
@@ -116,20 +118,18 @@ impl Processer {
                     plot_ui.translate_bounds(delta_pos);
                 }
             }
-    
+
             if pointer_down {
                 let pointer_translate = -plot_ui.pointer_coordinate_drag_delta();
                 // Lock axis functionality removed for simplification, add if needed
                 plot_ui.translate_bounds(pointer_translate);
             }
         }
-
-
     }
 
     pub fn select_histograms_ui(&mut self, ui: &mut egui::Ui) {
         ui.label("Histograms"); // Label for the histogram buttons.
-        
+
         let keys: Vec<String> = self.histogrammer.get_histogram_list(); // Retrieve the list of histogram names.
 
         // Layout for the buttons: top down and justified at the top.
@@ -168,8 +168,9 @@ impl Processer {
 
     fn render_1d_histogram(&mut self, ui: &mut egui::Ui) {
         if let Some(hist_name) = self.selected_histograms.first() {
-            if let Some(HistogramTypes::Hist1D(hist)) = self.histogrammer.histogram_list.get(hist_name.as_str()) {
-
+            if let Some(HistogramTypes::Hist1D(hist)) =
+                self.histogrammer.histogram_list.get(hist_name.as_str())
+            {
                 /* For custom 2d histogram plot manipulation settings*/
                 let (scroll, pointer_down, modifiers) = ui.input(|i| {
                     let scroll = i.events.iter().find_map(|e| match e {
@@ -179,8 +180,10 @@ impl Processer {
                     (scroll, i.pointer.primary_down(), i.modifiers)
                 });
 
-                
-                let fit_handler = self.fit_handler.entry(hist_name.clone()).or_insert_with(FitHandler::new);
+                let fit_handler = self
+                    .fit_handler
+                    .entry(hist_name.clone())
+                    .or_insert_with(FitHandler::new);
                 fit_handler.histogram = Some(hist.clone()); // Set the histogram for the fit handler
                 fit_handler.interactive_keybinds(ui); // enable the key binds to add markers and draw the fits
 
@@ -191,52 +194,50 @@ impl Processer {
                     .allow_boxed_zoom(true)
                     .auto_bounds(egui::Vec2b::new(true, true))
                     .allow_scroll(false);
-    
-                
+
                 let color = if ui.ctx().style().visuals.dark_mode {
-                    // check if the ui is in dark mode. 
+                    // check if the ui is in dark mode.
                     // Light blue looks nice on dark mode but hard to see in light mode.
                     egui::Color32::LIGHT_BLUE
                 } else {
                     egui::Color32::BLACK
                 };
-    
-                plot.show(ui, |plot_ui| {
 
+                plot.show(ui, |plot_ui| {
                     Self::custom_plot_manipulation(plot_ui, scroll, pointer_down, modifiers);
 
                     let plot_min_x = plot_ui.plot_bounds().min()[0];
                     let plot_max_x = plot_ui.plot_bounds().max()[0];
 
-                    if let Some(step_line) = self.histogrammer.egui_histogram_step(&hist_name, color) {
+                    if let Some(step_line) =
+                        self.histogrammer.egui_histogram_step(&hist_name, color)
+                    {
                         plot_ui.line(step_line);
-    
+
                         let stats_entries = hist.legend_entries(plot_min_x, plot_max_x);
                         for (_i, entry) in stats_entries.iter().enumerate() {
                             plot_ui.text(
                                 Text::new(PlotPoint::new(0, 0), " ") // Placeholder for positioning; adjust as needed
                                     .highlight(false)
                                     .color(color)
-                                    .name(entry)
+                                    .name(entry),
                             );
                         }
                     }
-    
+
                     fit_handler.markers.cursor_position = plot_ui.pointer_coordinate();
                     fit_handler.markers.draw_markers(plot_ui);
                     fit_handler.draw_fits(plot_ui);
-
                 });
             }
-        
         }
-
     }
 
     fn render_2d_histogram(&mut self, ui: &mut egui::Ui) {
         if let Some(hist_name) = self.selected_histograms.first() {
-            if let Some(HistogramTypes::Hist2D(hist)) = self.histogrammer.histogram_list.get(hist_name.as_str()) {
-
+            if let Some(HistogramTypes::Hist2D(hist)) =
+                self.histogrammer.histogram_list.get(hist_name.as_str())
+            {
                 // cut handler ui
                 self.cut_handler.cut_handler_ui(ui);
 
@@ -262,8 +263,7 @@ impl Processer {
                     (scroll, i.pointer.primary_down(), i.modifiers)
                 });
 
-                plot.show(ui, |plot_ui| { 
-
+                plot.show(ui, |plot_ui| {
                     Self::custom_plot_manipulation(plot_ui, scroll, pointer_down, modifiers);
 
                     let plot_min_x = plot_ui.plot_bounds().min()[0];
@@ -274,14 +274,15 @@ impl Processer {
                     if let Some(bar_chart) = self.histogrammer.egui_heatmap(&hist_name) {
                         plot_ui.bar_chart(bar_chart.color(color));
 
-                        let stats_entries = hist.legend_entries(plot_min_x, plot_max_x, plot_min_y, plot_max_y);
+                        let stats_entries =
+                            hist.legend_entries(plot_min_x, plot_max_x, plot_min_y, plot_max_y);
 
                         for (_i, entry) in stats_entries.iter().enumerate() {
                             plot_ui.text(
                                 Text::new(PlotPoint::new(0, 0), " ") // Placeholder for positioning; adjust as needed
                                     .highlight(false)
                                     .color(color)
-                                    .name(entry)
+                                    .name(entry),
                             );
                         }
                     }
@@ -289,14 +290,12 @@ impl Processer {
                     if self.cut_handler.draw_flag {
                         self.cut_handler.draw_active_cut(plot_ui);
                     }
-
                 });
             }
         }
     }
 
     fn render_multiple_histograms(&mut self, ui: &mut egui::Ui) {
-
         let (scroll, pointer_down, modifiers) = ui.input(|i| {
             let scroll = i.events.iter().find_map(|e| match e {
                 egui::Event::MouseWheel { delta, .. } => Some(*delta),
@@ -304,7 +303,6 @@ impl Processer {
             });
             (scroll, i.pointer.primary_down(), i.modifiers)
         });
-        
 
         // Set up the plot for the combined histogram display.
         let plot = Plot::new("Combined Histogram")
@@ -317,14 +315,25 @@ impl Processer {
             .allow_scroll(false);
 
         let colors = if ui.ctx().style().visuals.dark_mode {
-            [egui::Color32::LIGHT_BLUE, egui::Color32::LIGHT_RED, egui::Color32::LIGHT_GREEN, egui::Color32::LIGHT_YELLOW, egui::Color32::LIGHT_GRAY]
+            [
+                egui::Color32::LIGHT_BLUE,
+                egui::Color32::LIGHT_RED,
+                egui::Color32::LIGHT_GREEN,
+                egui::Color32::LIGHT_YELLOW,
+                egui::Color32::LIGHT_GRAY,
+            ]
         } else {
-            [egui::Color32::BLACK, egui::Color32::DARK_RED, egui::Color32::DARK_BLUE, egui::Color32::GREEN, egui::Color32::DARK_GRAY]
+            [
+                egui::Color32::BLACK,
+                egui::Color32::DARK_RED,
+                egui::Color32::DARK_BLUE,
+                egui::Color32::GREEN,
+                egui::Color32::DARK_GRAY,
+            ]
         };
 
         // Display the plot in the UI.
         plot.show(ui, |plot_ui| {
-
             Self::custom_plot_manipulation(plot_ui, scroll, pointer_down, modifiers);
 
             let plot_min_x = plot_ui.plot_bounds().min()[0];
@@ -336,10 +345,11 @@ impl Processer {
                 // Render the appropriate histogram type based on its type.
                 match self.histogrammer.get_histogram_type(selected_name) {
                     Some(HistogramTypes::Hist1D(hist)) => {
-
                         let hist_color = colors[i % colors.len()];
-                        if let Some(step_line) = self.histogrammer.egui_histogram_step(selected_name, hist_color) {
-
+                        if let Some(step_line) = self
+                            .histogrammer
+                            .egui_histogram_step(selected_name, hist_color)
+                        {
                             plot_ui.line(step_line);
 
                             let stats_entries = hist.legend_entries(plot_min_x, plot_max_x);
@@ -349,30 +359,28 @@ impl Processer {
                                     Text::new(PlotPoint::new(0, 0), " ") // Placeholder for positioning; adjust as needed
                                         .highlight(false)
                                         .color(hist_color)
-                                        .name(entry)
+                                        .name(entry),
                                 );
                             }
-
                         }
                     }
                     Some(HistogramTypes::Hist2D(hist)) => {
-                        
                         let hist_color = colors[i % colors.len()];
 
                         if let Some(bar_chart) = self.histogrammer.egui_heatmap(selected_name) {
                             plot_ui.bar_chart(bar_chart.color(hist_color));
 
-                            let stats_entries = hist.legend_entries(plot_min_x, plot_max_x, plot_min_y, plot_max_y);
+                            let stats_entries =
+                                hist.legend_entries(plot_min_x, plot_max_x, plot_min_y, plot_max_y);
 
                             for (_i, entry) in stats_entries.iter().enumerate() {
                                 plot_ui.text(
                                     Text::new(PlotPoint::new(0, 0), " ") // Placeholder for positioning; adjust as needed
                                         .highlight(false)
                                         .color(hist_color)
-                                        .name(entry)
+                                        .name(entry),
                                 );
                             }
-
                         }
                     }
 
@@ -387,8 +395,8 @@ impl Processer {
 
     pub fn render_histos(&mut self, ui: &mut egui::Ui) {
         if self.selected_histograms.is_empty() {
-            ui.label("No histograms are selected");  
-            return;        
+            ui.label("No histograms are selected");
+            return;
         }
         if self.selected_histograms.len() == 1 {
             self.render_1d_histogram(ui);
@@ -404,7 +412,6 @@ impl Processer {
     }
 
     pub fn filter_lazyframe_with_cuts(&mut self) {
-
         // First, check if `self.lazyframer` is Some and get a mutable reference to it
         if let Some(ref mut lazyframer) = self.lazyframer {
             // Now you can access `lazyframer.lazyframe` because `lazyframer` is a mutable reference to `LazyFramer`
@@ -414,7 +421,7 @@ impl Processer {
                         // Use the setter method to update the lazyframe
                         lazyframer.set_lazyframe(filtered_lf);
                         self.perform_histogrammer_from_lazyframe();
-                    },
+                    }
                     Err(e) => {
                         log::error!("Failed to filter LazyFrame with cuts: {}", e);
                     }
@@ -426,22 +433,22 @@ impl Processer {
     pub fn save_current_lazyframe(&mut self) {
         // First, check if `self.lazyframer` is Some and get a mutable reference to it
         // if let Some(ref mut lazyframer) = self.lazyframer {
-            // Now you can access `lazyframer.lazyframe` because `lazyframer` is a mutable reference to `LazyFramer`
-                // Ask user for output file path
-            if let Some(output_path) = rfd::FileDialog::new()
-                .set_title("Collect Lazyframe and save the DataFrame to a single file")
-                .add_filter("Parquet file", &["parquet"])
-                .save_file() {
-
-                if let Some(lazyframer) = &mut self.lazyframer {
-                    match lazyframer.save_lazyframe(&output_path) {
-                        Ok(_) => println!("LazyFrame saved successfully."),
-                        Err(e) => log::error!("Failed to save LazyFrame: {}", e),
-                    }
-                } else {
-                    log::error!("No LazyFrame loaded to save.");
+        // Now you can access `lazyframer.lazyframe` because `lazyframer` is a mutable reference to `LazyFramer`
+        // Ask user for output file path
+        if let Some(output_path) = rfd::FileDialog::new()
+            .set_title("Collect Lazyframe and save the DataFrame to a single file")
+            .add_filter("Parquet file", &["parquet"])
+            .save_file()
+        {
+            if let Some(lazyframer) = &mut self.lazyframer {
+                match lazyframer.save_lazyframe(&output_path) {
+                    Ok(_) => println!("LazyFrame saved successfully."),
+                    Err(e) => log::error!("Failed to save LazyFrame: {}", e),
                 }
+            } else {
+                log::error!("No LazyFrame loaded to save.");
             }
+        }
         // }
     }
 
@@ -450,14 +457,12 @@ impl Processer {
 
         ui.horizontal(|ui| {
 
-            
             if ui.button("Calculate Histograms").clicked() {
                 self.calculate_histograms();
             }
 
             // check to see if there is a lazyframe to cut
             if self.lazyframer.is_some() {
-                // check to see if there are cuts
 
                 ui.separator();
 
@@ -475,7 +480,6 @@ impl Processer {
 
             } else {
                 if !self.cut_handler.cuts.is_empty() {
-                    
                     ui.separator();
 
                     ui.label("Recalculate histograms to filter with cuts");
@@ -487,7 +491,5 @@ impl Processer {
         });
 
         ui.separator();
-
     }
-
 }

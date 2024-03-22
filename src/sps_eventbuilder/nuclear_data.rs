@@ -1,16 +1,16 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::io::BufRead;
-use std::fmt::Display;
-use std::error::Error;
 use log::info;
+use std::collections::HashMap;
+use std::error::Error;
+use std::fmt::Display;
+use std::io::BufRead;
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum MassError {
     MassFileNotFoundError,
     MassFileParseError,
     MassFileParseIntError(std::num::ParseIntError),
-    MassFileParseFloatError(std::num::ParseFloatError)
+    MassFileParseFloatError(std::num::ParseFloatError),
 }
 
 impl From<std::io::Error> for MassError {
@@ -34,17 +34,21 @@ impl From<std::num::ParseFloatError> for MassError {
 impl Display for MassError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MassError::MassFileNotFoundError => write!(f, "Could not find and open amdc mass file!"),
+            MassError::MassFileNotFoundError => {
+                write!(f, "Could not find and open amdc mass file!")
+            }
             MassError::MassFileParseError => write!(f, "Unable to parse amdc mass file!"),
-            MassError::MassFileParseIntError(e) => write!(f, "Unable to parse amdc mass file with error {}", e),
-            MassError::MassFileParseFloatError(e) => write!(f, "Unable to parse amdc mass file with error {}", e)
+            MassError::MassFileParseIntError(e) => {
+                write!(f, "Unable to parse amdc mass file with error {}", e)
+            }
+            MassError::MassFileParseFloatError(e) => {
+                write!(f, "Unable to parse amdc mass file with error {}", e)
+            }
         }
     }
 }
 
-impl Error for MassError {
-
-}
+impl Error for MassError {}
 
 #[derive(Debug, Clone)]
 pub struct NuclearData {
@@ -52,17 +56,27 @@ pub struct NuclearData {
     pub a: u32,
     pub mass: f64,
     pub isotope: String,
-    pub element: String
+    pub element: String,
 }
 
 impl Default for NuclearData {
     fn default() -> Self {
-        NuclearData { z: 0, a: 0, mass: 0.0, isotope: String::from("None"), element: String::from("None") }
+        NuclearData {
+            z: 0,
+            a: 0,
+            mass: 0.0,
+            isotope: String::from("None"),
+            element: String::from("None"),
+        }
     }
 }
 
 fn generate_nucleus_id(z: &u32, a: &u32) -> u32 {
-    if z >= a { z * z + z + a } else { a * a + z }
+    if z >= a {
+        z * z + z + a
+    } else {
+        a * a + z
+    }
 }
 
 const U2MEV: f64 = 931.49410242;
@@ -71,12 +85,15 @@ const ELECTRON_MASS: f64 = 0.51099895000; //MeV
 #[derive(Debug, Clone, Default)]
 pub struct MassMap {
     pub map: HashMap<u32, NuclearData>,
-    pub file: PathBuf
+    pub file: PathBuf,
 }
 
 impl MassMap {
     pub fn new() -> Result<Self, MassError> {
-        let mut map = MassMap { map: HashMap::new(), file: PathBuf::from(std::env::current_dir()?.join("etc").join("amdc_2016.txt")) };
+        let mut map = MassMap {
+            map: HashMap::new(),
+            file: PathBuf::from(std::env::current_dir()?.join("etc").join("amdc_2016.txt")),
+        };
         info!("Mass file: {:?}", map.file);
         map.init()?;
         return Ok(map);
@@ -89,7 +106,7 @@ impl MassMap {
         reader.read_line(&mut junk)?;
         reader.read_line(&mut junk)?;
         let lines = reader.lines();
-        
+
         for line in lines {
             match line {
                 Ok(line_str) => {
@@ -99,10 +116,12 @@ impl MassMap {
                     data.a = entries[2].parse()?;
                     data.element = String::from(entries[3]);
                     data.isotope = format!("{}{}", data.a, data.element);
-                    data.mass = (entries[4].parse::<f64>()? + 1.0e-6 * entries[5].parse::<f64>()?) * U2MEV - (data.z as f64) * ELECTRON_MASS;
+                    data.mass =
+                        (entries[4].parse::<f64>()? + 1.0e-6 * entries[5].parse::<f64>()?) * U2MEV
+                            - (data.z as f64) * ELECTRON_MASS;
                     self.map.insert(generate_nucleus_id(&data.z, &data.a), data);
-                },
-                Err(_) => return Err(MassError::MassFileParseError)
+                }
+                Err(_) => return Err(MassError::MassFileParseError),
             };
         }
 

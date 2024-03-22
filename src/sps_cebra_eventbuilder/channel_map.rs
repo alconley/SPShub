@@ -1,8 +1,7 @@
-
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::num::ParseIntError;
 use strum_macros::{AsRefStr, EnumIter};
-use serde::{Serialize, Deserialize};
 
 use super::compass_data::generate_board_channel_uuid;
 
@@ -30,7 +29,7 @@ pub enum ChannelType {
     // make sure to update app.rs so the channel map combo box are updated
 
     //Invalid channel
-    None
+    None,
 }
 
 impl ChannelType {
@@ -38,7 +37,6 @@ impl ChannelType {
         ChannelType::None // Default type
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Board {
@@ -52,7 +50,6 @@ impl Default for Board {
         }
     }
 }
-
 
 #[derive(Debug)]
 pub enum ChannelMapError {
@@ -76,16 +73,20 @@ impl From<ParseIntError> for ChannelMapError {
 impl std::fmt::Display for ChannelMapError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChannelMapError::IOError(x) => write!(f, "Channel map had an error with the input file: {}", x),
-            ChannelMapError::ParseError(x) => write!(f, "Channel map had an error parsing the channel map file: {}", x),
+            ChannelMapError::IOError(x) => {
+                write!(f, "Channel map had an error with the input file: {}", x)
+            }
+            ChannelMapError::ParseError(x) => write!(
+                f,
+                "Channel map had an error parsing the channel map file: {}",
+                x
+            ),
             // ChannelMapError::UnidentifiedChannelError => write!(f, "Channel map found an unidentified field in the channel map file")
         }
     }
 }
 
-impl std::error::Error for ChannelMapError {
-
-}
+impl std::error::Error for ChannelMapError {}
 
 #[derive(Debug, Clone)]
 pub struct ChannelData {
@@ -94,24 +95,30 @@ pub struct ChannelData {
 
 impl Default for ChannelData {
     fn default() -> Self {
-        ChannelData { channel_type: ChannelType::None}
+        ChannelData {
+            channel_type: ChannelType::None,
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct ChannelMap {
-    map: HashMap<u32, ChannelData>
+    map: HashMap<u32, ChannelData>,
 }
 
 impl ChannelMap {
-
     pub fn new(boards: &Vec<Board>) -> ChannelMap {
-        let mut cmap = ChannelMap { map: HashMap::new() };
+        let mut cmap = ChannelMap {
+            map: HashMap::new(),
+        };
         for (board_index, board) in boards.iter().enumerate() {
             for (channel_index, channel) in board.channels.iter().enumerate() {
                 let mut data = ChannelData::default();
                 data.channel_type = *channel;
-                cmap.map.insert(generate_board_channel_uuid(&(board_index as u32), &(channel_index as u32)), data);
+                cmap.map.insert(
+                    generate_board_channel_uuid(&(board_index as u32), &(channel_index as u32)),
+                    data,
+                );
             }
         }
         return cmap;
@@ -120,5 +127,4 @@ impl ChannelMap {
     pub fn get_channel_data(&self, uuid: &u32) -> Option<&ChannelData> {
         return self.map.get(uuid);
     }
-    
 }

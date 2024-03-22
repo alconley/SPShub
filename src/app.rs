@@ -1,10 +1,8 @@
 // Conditional compilation
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{
-    sps_cebra_eventbuilder::app::EVBApp as SPSCeBrAEvbApp,
-    sps_eventbuilder::app::EVBApp as SPSEvbApp,
-    sps_plot::app::SPSPlotApp,
-    plotter::app::PlotterApp,
+    plotter::app::PlotterApp, sps_cebra_eventbuilder::app::EVBApp as SPSCeBrAEvbApp,
+    sps_eventbuilder::app::EVBApp as SPSEvbApp, sps_plot::app::SPSPlotApp,
 };
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -28,7 +26,6 @@ pub struct TemplateApp {
     #[cfg(not(target_arch = "wasm32"))]
     plotter_app: PlotterApp,
     plotter_app_visible: bool,
-
 }
 
 impl Default for TemplateApp {
@@ -49,7 +46,6 @@ impl Default for TemplateApp {
             #[cfg(not(target_arch = "wasm32"))]
             plotter_app: PlotterApp::default(),
             plotter_app_visible: false,
-
         }
     }
 }
@@ -72,7 +68,6 @@ impl TemplateApp {
 
                 plotter_app: PlotterApp::new(cc), // Custom initialization.
                 plotter_app_visible: false,
-
             };
 
             // Attempt to restore the app state from persistent storage, if available.
@@ -89,7 +84,6 @@ impl TemplateApp {
             Self::default() // WASM targets use default initialization.
         }
     }
-
 }
 
 impl eframe::App for TemplateApp {
@@ -124,24 +118,48 @@ impl eframe::App for TemplateApp {
 
         egui::SidePanel::right("sidebar_panel").show(ctx, |ui| {
             // ui.heading("Apps");
-        
+
             // Set the layout to top-down with centered alignment
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 ui.heading("Apps");
 
                 let full_width = ui.available_width(); // Get the full available width to make the label span the entire panel
-        
-                if ui.add_sized([full_width, 0.0], egui::SelectableLabel::new(self.sps_cebra_evb_app_visible, "SPS+CeBrA Evb")).clicked() {
+
+                if ui
+                    .add_sized(
+                        [full_width, 0.0],
+                        egui::SelectableLabel::new(self.sps_cebra_evb_app_visible, "SPS+CeBrA Evb"),
+                    )
+                    .clicked()
+                {
                     self.sps_cebra_evb_app_visible = !self.sps_cebra_evb_app_visible;
                 }
-                if ui.add_sized([full_width, 0.0], egui::SelectableLabel::new(self.sps_evb_app_visible, "SPS Evb")).clicked() {
+                if ui
+                    .add_sized(
+                        [full_width, 0.0],
+                        egui::SelectableLabel::new(self.sps_evb_app_visible, "SPS Evb"),
+                    )
+                    .clicked()
+                {
                     self.sps_evb_app_visible = !self.sps_evb_app_visible;
                 }
-                if ui.add_sized([full_width, 0.0], egui::SelectableLabel::new(self.sps_plot_app_visible, "SPS Plot")).clicked() {
+                if ui
+                    .add_sized(
+                        [full_width, 0.0],
+                        egui::SelectableLabel::new(self.sps_plot_app_visible, "SPS Plot"),
+                    )
+                    .clicked()
+                {
                     self.sps_plot_app_visible = !self.sps_plot_app_visible;
                 }
 
-                if ui.add_sized([full_width, 0.0], egui::SelectableLabel::new(self.plotter_app_visible, "Plotter")).clicked() {
+                if ui
+                    .add_sized(
+                        [full_width, 0.0],
+                        egui::SelectableLabel::new(self.plotter_app_visible, "Plotter"),
+                    )
+                    .clicked()
+                {
                     self.plotter_app_visible = !self.plotter_app_visible;
                 }
             });
@@ -158,7 +176,6 @@ impl eframe::App for TemplateApp {
 
             // conditional statement to differentiate between web and non-web targets.
             if cfg!(target_arch = "wasm32") {
-
                 if self.sps_cebra_evb_app_visible {
                     // Instructions for web users, as event builders are not available.
                     egui::Window::new("SPS+CeBrA Eventbuilder").show(ctx, |ui| {
@@ -177,9 +194,7 @@ impl eframe::App for TemplateApp {
                     });
                 }
 
-                
                 if self.sps_plot_app_visible {
-
                     egui::Window::new("SPS Plot").show(ctx, |ui| {
                         ui.label("Will be available soon. Hopefully lol");
                     });
@@ -188,12 +203,10 @@ impl eframe::App for TemplateApp {
                 }
 
                 if self.plotter_app_visible {
-
                     egui::Window::new("Plotter").show(ctx, |ui| {
                         ui.label("Will be available soon. Hopefully lol");
                     });
                 }
-
             } else {
                 // Update calls for non-web targets are grouped to avoid repetitive conditional checks.
                 #[cfg(not(target_arch = "wasm32"))]
@@ -213,10 +226,8 @@ impl eframe::App for TemplateApp {
                     if self.plotter_app_visible {
                         self.plotter_app.update(ctx, frame);
                     }
-
                 }
             }
         });
-
     }
 }

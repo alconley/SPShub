@@ -1,5 +1,5 @@
 use super::nuclear_data::MassMap;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 const C: f64 = 2.99792458e8; //speed of light in m/s
 const QBRHO2P: f64 = C * 1.0e-9; //convert charge (in units of e) * B (kG (tesla)) * rho (cm) to momentum in MeV
@@ -15,8 +15,8 @@ pub struct KineParameters {
     pub projectile_a: u32,
     pub ejectile_z: u32,
     pub ejectile_a: u32,
-    pub b_field: f64, //kG
-    pub sps_angle: f64, //deg
+    pub b_field: f64,       //kG
+    pub sps_angle: f64,     //deg
     pub projectile_ke: f64, //MeV
 }
 
@@ -46,25 +46,24 @@ impl KineParameters {
     }
 
     pub fn generate_rxn_eqn(&self, nuc_map: &MassMap) -> String {
-
         let targ_str = match nuc_map.get_data(&self.target_z, &self.target_a) {
             Some(data) => &data.isotope,
-            None => "Invalid"
+            None => "Invalid",
         };
 
         let proj_str = match nuc_map.get_data(&self.projectile_z, &self.projectile_a) {
             Some(data) => &data.isotope,
-            None => "Invalid"
+            None => "Invalid",
         };
 
         let eject_str = match nuc_map.get_data(&self.ejectile_z, &self.ejectile_a) {
             Some(data) => &data.isotope,
-            None => "Invalid"
+            None => "Invalid",
         };
 
         let resid_str = match nuc_map.get_data(&self.get_residual_z(), &self.get_residual_a()) {
             Some(data) => &data.isotope,
-            None => "Invalid"
+            None => "Invalid",
         };
 
         format!("{}({},{}){}", targ_str, proj_str, eject_str, resid_str)
@@ -73,31 +72,32 @@ impl KineParameters {
 
 //Returns z-offset of focal plane in cm
 fn calculate_z_offset(params: &KineParameters, nuc_map: &MassMap) -> Option<f64> {
-    let target = match nuc_map.get_data(&params.target_z, &params.target_a){
+    let target = match nuc_map.get_data(&params.target_z, &params.target_a) {
         Some(data) => data,
-        None => return None
+        None => return None,
     };
 
     println!("Target: {:?}", target);
     let projectile = match nuc_map.get_data(&params.projectile_z, &params.projectile_a) {
         Some(data) => data,
-        None => return None
+        None => return None,
     };
     let ejectile = match nuc_map.get_data(&params.ejectile_z, &params.ejectile_a) {
         Some(data) => data,
-        None => return None
+        None => return None,
     };
     let residual = match nuc_map.get_data(&params.get_residual_z(), &params.get_residual_a()) {
         Some(data) => data,
-        None => return None
+        None => return None,
     };
 
     let angle_rads = params.sps_angle.to_radians();
     let q_val = target.mass + projectile.mass - ejectile.mass - residual.mass;
-    let term1 = (projectile.mass * ejectile.mass * params.projectile_ke).sqrt() / 
-                     (ejectile.mass + residual.mass) * angle_rads.cos();
-    let term2 = (params.projectile_ke * (residual.mass - projectile.mass) + residual.mass * q_val) /
-                     (ejectile.mass + residual.mass);
+    let term1 = (projectile.mass * ejectile.mass * params.projectile_ke).sqrt()
+        / (ejectile.mass + residual.mass)
+        * angle_rads.cos();
+    let term2 = (params.projectile_ke * (residual.mass - projectile.mass) + residual.mass * q_val)
+        / (ejectile.mass + residual.mass);
 
     let mut ejectile_ke = term1 + (term1 * term1 + term2).sqrt();
     if ejectile_ke.is_nan() {
@@ -106,7 +106,7 @@ fn calculate_z_offset(params: &KineParameters, nuc_map: &MassMap) -> Option<f64>
     ejectile_ke *= ejectile_ke;
 
     let ejectile_p = (ejectile_ke * (ejectile_ke + 2.0 * ejectile.mass)).sqrt();
-    let rho = ejectile_p /((ejectile.z as f64) * params.b_field * QBRHO2P);
+    let rho = ejectile_p / ((ejectile.z as f64) * params.b_field * QBRHO2P);
     let val = (projectile.mass * ejectile.mass * params.projectile_ke / ejectile_ke).sqrt();
     let k = val * angle_rads.sin() / (ejectile.mass + residual.mass - val * angle_rads.cos());
     return Some(-1.0 * rho * SPS_DISPERSION * SPS_MAGNIFICATION * k);
@@ -117,9 +117,9 @@ fn calculate_z_offset(params: &KineParameters, nuc_map: &MassMap) -> Option<f64>
 pub fn calculate_weights(params: &KineParameters, nuc_map: &MassMap) -> Option<(f64, f64)> {
     let z_offset = match calculate_z_offset(params, nuc_map) {
         Some(z) => z,
-        None => return None
+        None => return None,
     };
-    let w1 = 0.5 - z_offset/SPS_DETECTOR_WIRE_DIST;
+    let w1 = 0.5 - z_offset / SPS_DETECTOR_WIRE_DIST;
     let w2 = 1.0 - w1;
     Some((w1, w2))
 }

@@ -1,6 +1,6 @@
+use super::shift_map::ShiftMap;
 use bitflags::bitflags;
 use rand::Rng;
-use super::shift_map::ShiftMap;
 
 bitflags! {
     #[derive(Debug)]
@@ -21,13 +21,17 @@ pub struct RawCompassData {
     pub timestamp: u64,
     pub energy: u16,
     pub energy_calibrated: u64,
-    pub energy_short: u16
+    pub energy_short: u16,
 }
 
 pub const fn generate_board_channel_uuid(board: &u32, channel: &u32) -> u32 {
     let b = *board;
     let c = *channel;
-    if b >= c { b * b + b + c } else { c * c + b }
+    if b >= c {
+        b * b + b + c
+    } else {
+        c * c + b
+    }
 }
 
 #[allow(dead_code)]
@@ -46,7 +50,7 @@ pub struct CompassData {
     pub uuid: u32,
     pub energy: f64,
     pub energy_short: f64,
-    pub timestamp: f64
+    pub timestamp: f64,
 }
 
 impl CompassData {
@@ -61,8 +65,8 @@ impl CompassData {
             energy_short: raw.energy_short as f64 + rng.gen::<f64>(),
             timestamp: match shifts {
                 Some(map) => raw.timestamp as f64 * 1.0e-3 + map.get_timeshift(&id),
-                None => raw.timestamp as f64 * 1.0e-3
-            }
+                None => raw.timestamp as f64 * 1.0e-3,
+            },
         }
     }
 
@@ -82,6 +86,11 @@ impl CompassData {
 
 impl Default for CompassData {
     fn default() -> Self {
-        CompassData { uuid: 0, energy: 0.0, energy_short: 0.0, timestamp: 0.0 }
+        CompassData {
+            uuid: 0,
+            energy: 0.0,
+            energy_short: 0.0,
+            timestamp: 0.0,
+        }
     }
 }

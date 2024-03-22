@@ -1,22 +1,22 @@
 use std::fs::File;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
 use flate2::read::GzDecoder;
-use polars::prelude::*;
-use std::sync::{Mutex, Arc};
-use tar::Archive;
 use log::info;
+use polars::prelude::*;
+use std::sync::{Arc, Mutex};
+use tar::Archive;
 
-use super::used_size::UsedSize;
-use super::channel_map::{ChannelMap, Board};
+use super::channel_data::ChannelData;
+use super::channel_map::{Board, ChannelMap};
+use super::compass_file::CompassFile;
+use super::error::EVBError;
+use super::event_builder::EventBuilder;
+use super::kinematics::{calculate_weights, KineParameters};
+use super::nuclear_data::MassMap;
 use super::scaler_list::{ScalerEntryUI, ScalerList};
 use super::shift_map::{ShiftMap, ShiftMapEntry};
-use super::compass_file::CompassFile;
-use super::event_builder::EventBuilder;
-use super::channel_data::ChannelData;
-use super::error::EVBError;
-use super::nuclear_data::MassMap;
-use super::kinematics::{KineParameters, calculate_weights};
+use super::used_size::UsedSize;
 
 //Maximum allowed size for a single dataframe: 8GB
 const MAX_USED_SIZE: usize = 8_000_000_000;
@@ -32,11 +32,10 @@ struct RunParams<'a> {
     pub channel_map: &'a ChannelMap,
     pub shift_map: &'a Option<ShiftMap>,
     pub coincidence_window: f64,
-    pub run_number: i32
+    pub run_number: i32,
 }
 
 fn clean_up_unpack_dir(unpack_dir: &Path) -> Result<(), EVBError> {
-
     for item in unpack_dir.read_dir()? {
         if let Ok(entry) = item {
             if entry.metadata()?.is_file() {
@@ -50,21 +49,30 @@ fn clean_up_unpack_dir(unpack_dir: &Path) -> Result<(), EVBError> {
 
 fn write_dataframe(data: ChannelData, filepath: &Path) -> Result<(), PolarsError> {
     info!("Writing dataframe to disk at {}", filepath.display());
-    let columns : Vec<Series> = data.convert_to_series();
+    let columns: Vec<Series> = data.convert_to_series();
     let mut df = DataFrame::new(columns)?;
     let mut output_file = File::create(filepath)?;
     ParquetWriter::new(&mut output_file).finish(&mut df)?;
     Ok(())
 }
 
-fn write_dataframe_fragment(data: ChannelData, out_dir: &Path, run_number: &i32, frag_number: &i32) -> Result<(), PolarsError> {
+fn write_dataframe_fragment(
+    data: ChannelData,
+    out_dir: &Path,
+    run_number: &i32,
+    frag_number: &i32,
+) -> Result<(), PolarsError> {
     let frag_file_path = out_dir.join(format!("run_{}_{}.parquet", run_number, frag_number));
     write_dataframe(data, &frag_file_path)?;
     Ok(())
 }
 
 //Main function which processes a single run archive and writes the resulting event built data to parquet file
-fn process_run(params: RunParams<'_>, k_params: &KineParameters, progress: Arc<Mutex<f32>>) -> Result<(), EVBError> {
+fn process_run(
+    params: RunParams<'_>,
+    k_params: &KineParameters,
+    progress: Arc<Mutex<f32>>,
+) -> Result<(), EVBError> {
     //Protective, ensure no loose files
     clean_up_unpack_dir(&params.unpack_dir_path)?;
 
@@ -82,12 +90,12 @@ fn process_run(params: RunParams<'_>, k_params: &KineParameters, progress: Arc<M
         match &mut scaler_list {
             Some(list) => {
                 if list.read_scaler(filepath) {
-                    continue
+                    continue;
                 }
             }
-            None => ()
+            None => (),
         };
-        
+
         files.push(CompassFile::new(filepath, params.shift_map)?);
         files.last_mut().unwrap().set_hit_used();
         files.last_mut().unwrap().get_top_hit()?;
@@ -132,7 +140,8 @@ fn process_run(params: RunParams<'_>, k_params: &KineParameters, progress: Arc<M
 
         match earliest_file_index {
             None => break, //This is how we exit, no more hits to be found
-            Some(i) => { //else we pop the earliest hit off to the event builder
+            Some(i) => {
+                //else we pop the earliest hit off to the event builder
                 let hit = files[i].get_top_hit()?;
                 evb.push_hit(hit);
                 files[i].set_hit_used();
@@ -143,7 +152,12 @@ fn process_run(params: RunParams<'_>, k_params: &KineParameters, progress: Arc<M
             analyzed_data.append_event(evb.get_ready_event(), params.channel_map, x_weights);
             //Check to see if we need to fragment
             if analyzed_data.get_used_size() > MAX_USED_SIZE {
-                write_dataframe_fragment(analyzed_data, params.output_file_path.parent().unwrap(), &params.run_number, &frag_number)?;
+                write_dataframe_fragment(
+                    analyzed_data,
+                    params.output_file_path.parent().unwrap(),
+                    &params.run_number,
+                    &frag_number,
+                )?;
                 //allocate new vector
                 analyzed_data = ChannelData::default();
                 frag_number += 1;
@@ -157,8 +171,8 @@ fn process_run(params: RunParams<'_>, k_params: &KineParameters, progress: Arc<M
             count = 0;
 
             match progress.lock() {
-                Ok(mut prog) => *prog  = (flush_count as f64 * flush_percent) as f32,
-                Err(_) => return Err(EVBError::SyncError)
+                Ok(mut prog) => *prog = (flush_count as f64 * flush_percent) as f32,
+                Err(_) => return Err(EVBError::SyncError),
             };
         }
     }
@@ -166,11 +180,16 @@ fn process_run(params: RunParams<'_>, k_params: &KineParameters, progress: Arc<M
     if frag_number == 0 {
         write_dataframe(analyzed_data, &params.output_file_path)?;
     } else {
-        write_dataframe_fragment(analyzed_data, params.output_file_path.parent().unwrap(), &params.run_number, &frag_number)?;
+        write_dataframe_fragment(
+            analyzed_data,
+            params.output_file_path.parent().unwrap(),
+            &params.run_number,
+            &frag_number,
+        )?;
     }
     match scaler_list {
         Some(list) => list.write_scalers(&params.scalerout_file_path)?,
-        None => ()
+        None => (),
     };
 
     //To be safe, manually drop all files in unpack dir before deleting all the files
@@ -190,17 +209,21 @@ pub struct ProcessParams {
     pub shift_map: Vec<ShiftMapEntry>,
     pub coincidence_window: f64,
     pub run_min: i32,
-    pub run_max: i32
+    pub run_max: i32,
 }
 
 //Function which handles processing multiple runs, this is what the UI actually calls
-pub fn process_runs(params: ProcessParams, k_params: KineParameters, progress: Arc<Mutex<f32>>) -> Result<(), EVBError> {
+pub fn process_runs(
+    params: ProcessParams,
+    k_params: KineParameters,
+    progress: Arc<Mutex<f32>>,
+) -> Result<(), EVBError> {
     let channel_map = ChannelMap::new(&params.channel_map);
     let mass_map = MassMap::new()?;
     let shift_map = ShiftMap::new(params.shift_map);
 
     for run in params.run_min..params.run_max {
-        let local_params =  RunParams {
+        let local_params = RunParams {
             run_archive_path: params.archive_dir.join(format!("run_{}.tar.gz", run)),
             unpack_dir_path: params.unpack_dir.clone(),
             output_file_path: params.output_dir.join(format!("run_{}.parquet", run)),
@@ -211,12 +234,12 @@ pub fn process_runs(params: ProcessParams, k_params: KineParameters, progress: A
             channel_map: &channel_map,
             shift_map: &Some(shift_map.clone()),
             coincidence_window: params.coincidence_window.clone(),
-            run_number: run.clone()
+            run_number: run.clone(),
         };
 
         match progress.lock() {
-            Ok(mut prog) => *prog  = 0.0,
-            Err(_) => return Err(EVBError::SyncError)
+            Ok(mut prog) => *prog = 0.0,
+            Err(_) => return Err(EVBError::SyncError),
         };
 
         //Skip over run if it doesnt exist

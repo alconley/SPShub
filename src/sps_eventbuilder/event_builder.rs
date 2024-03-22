@@ -5,17 +5,16 @@ pub struct EventBuilder {
     coincidence_window: f64,
     event: Vec<CompassData>,
     ready_event: Vec<CompassData>,
-    is_event_ready: bool
+    is_event_ready: bool,
 }
 
 impl EventBuilder {
-
     pub fn new(window: &f64) -> EventBuilder {
         EventBuilder {
             coincidence_window: window.clone(),
-            event : vec![],
-            ready_event : vec![],
-            is_event_ready : false
+            event: vec![],
+            ready_event: vec![],
+            is_event_ready: false,
         }
     }
 
