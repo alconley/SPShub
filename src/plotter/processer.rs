@@ -471,12 +471,18 @@ impl Processer {
                     if ui.button("Filter with Cuts").on_hover_text("CAUTION: The collected lazyframe must fit it memory").clicked() {
                         self.filter_lazyframe_with_cuts();
                     }
-
-                    
-
                 }
 
+            } else {
+                if !self.cut_handler.cuts.is_empty() {
+                    
+                    ui.separator();
+
+                    ui.label("Recalculate histograms to filter with cuts");
+                }
             }
+
+
 
         });
 

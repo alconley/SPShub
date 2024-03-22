@@ -244,13 +244,13 @@ impl FitHandler {
         
         // draw the current fit
         if let Some(fit) = &mut self.current_fit {
-            fit.draw(plot_ui, Color32::BLUE);
+            fit.draw(plot_ui, Color32::BLUE, Color32::from_rgb(255, 0, 255));
         }
 
         // draw the stored fits
         for fit in &mut self.fits {
             let color = Color32::from_rgb(162, 0, 255);
-            fit.draw(plot_ui, color);
+            fit.draw(plot_ui, color, color);
         }
     }
 
@@ -385,12 +385,12 @@ impl Fit {
 
     }
 
-    fn draw(&mut self, plot_ui: &mut PlotUi, color: Color32) {
+    fn draw(&mut self, plot_ui: &mut PlotUi, convoluted_color: Color32, decomposition_color: Color32) {
         if let Some(background_fitter) = &self.background {
             background_fitter.draw_background_line(plot_ui);
 
             if let Some(gaussian_fitter) = &self.fit {
-                gaussian_fitter.draw_decomposition_fit_lines(plot_ui, color);
+                gaussian_fitter.draw_decomposition_fit_lines(plot_ui, decomposition_color);
     
                 let slope = background_fitter.background_params.unwrap().0;
                 let intercept = background_fitter.background_params.unwrap().1;
@@ -398,8 +398,8 @@ impl Fit {
                  // Calculate and draw the convoluted fit
                  let convoluted_fit_points = gaussian_fitter.calculate_convoluted_fit_points_with_background(slope, intercept);
                  let line = Line::new(PlotPoints::Owned(convoluted_fit_points))
-                     .color(color) // Choose a distinct color for the convoluted fit
-                     .stroke(Stroke::new(1.0, color));
+                     .color(convoluted_color) // Choose a distinct color for the convoluted fit
+                     .stroke(Stroke::new(1.0, convoluted_color));
                  plot_ui.line(line);
             }
         }   
