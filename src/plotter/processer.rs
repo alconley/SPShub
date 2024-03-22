@@ -316,19 +316,16 @@ impl Processer {
             .auto_bounds(egui::Vec2b::new(true, true))
             .allow_scroll(false);
 
+        let colors = if ui.ctx().style().visuals.dark_mode {
+            [egui::Color32::LIGHT_BLUE, egui::Color32::LIGHT_RED, egui::Color32::LIGHT_GREEN, egui::Color32::LIGHT_YELLOW, egui::Color32::LIGHT_GRAY]
+        } else {
+            [egui::Color32::BLACK, egui::Color32::DARK_RED, egui::Color32::DARK_BLUE, egui::Color32::GREEN, egui::Color32::DARK_GRAY]
+        };
+
         // Display the plot in the UI.
         plot.show(ui, |plot_ui| {
 
             Self::custom_plot_manipulation(plot_ui, scroll, pointer_down, modifiers);
-
-            // Define a set of colors for the histograms.
-            let colors: [egui::Color32; 5] = [
-                egui::Color32::LIGHT_BLUE, 
-                egui::Color32::LIGHT_RED, 
-                egui::Color32::LIGHT_GREEN, 
-                egui::Color32::LIGHT_YELLOW, 
-                egui::Color32::LIGHT_GRAY
-            ];
 
             let plot_min_x = plot_ui.plot_bounds().min()[0];
             let plot_max_x = plot_ui.plot_bounds().max()[0];
