@@ -11,7 +11,7 @@ pub struct EventBuilder {
 impl EventBuilder {
     pub fn new(window: &f64) -> EventBuilder {
         EventBuilder {
-            coincidence_window: window.clone(),
+            coincidence_window: *window,
             event: vec![],
             ready_event: vec![],
             is_event_ready: false,
@@ -19,7 +19,7 @@ impl EventBuilder {
     }
 
     pub fn is_event_ready(&self) -> bool {
-        return self.is_event_ready;
+        self.is_event_ready
     }
 
     pub fn push_hit(&mut self, hit: &CompassData) {
@@ -40,6 +40,6 @@ impl EventBuilder {
 
     pub fn get_ready_event(&mut self) -> Vec<CompassData> {
         self.is_event_ready = false;
-        return self.ready_event.clone();
+        self.ready_event.clone()
     }
 }

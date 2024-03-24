@@ -75,7 +75,7 @@ impl ScalerList {
             };
         }
 
-        return false;
+        false
     }
 
     pub fn write_scalers(&self, filepath: &Path) -> Result<(), std::io::Error> {

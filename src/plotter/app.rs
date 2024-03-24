@@ -32,7 +32,7 @@ impl App for PlotterApp {
                         self.workspacer.workspace_ui(ui);
                     });
 
-                    if self.workspacer.selected_files.len() > 0 {
+                    if !self.workspacer.selected_files.is_empty() {
                         self.processer.files = self.workspacer.selected_files.clone();
                         self.processer.calculation_ui(ui);
                         // ui.separator();

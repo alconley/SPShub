@@ -187,7 +187,7 @@ impl Processer {
                 fit_handler.histogram = Some(hist.clone()); // Set the histogram for the fit handler
                 fit_handler.interactive_keybinds(ui); // enable the key binds to add markers and draw the fits
 
-                let plot = Plot::new(&hist_name)
+                let plot = Plot::new(hist_name)
                     .legend(Legend::default())
                     .allow_drag(false)
                     .allow_zoom(false)
@@ -210,7 +210,7 @@ impl Processer {
                     let plot_max_x = plot_ui.plot_bounds().max()[0];
 
                     if let Some(step_line) =
-                        self.histogrammer.egui_histogram_step(&hist_name, color)
+                        self.histogrammer.egui_histogram_step(hist_name, color)
                     {
                         plot_ui.line(step_line);
 
@@ -241,7 +241,7 @@ impl Processer {
                 // cut handler ui
                 self.cut_handler.cut_handler_ui(ui);
 
-                let plot = Plot::new(&hist_name)
+                let plot = Plot::new(hist_name)
                     .allow_zoom(false)
                     .allow_drag(false)
                     .allow_scroll(false)
@@ -271,7 +271,7 @@ impl Processer {
                     let plot_min_y = plot_ui.plot_bounds().min()[1];
                     let plot_max_y = plot_ui.plot_bounds().max()[1];
 
-                    if let Some(bar_chart) = self.histogrammer.egui_heatmap(&hist_name) {
+                    if let Some(bar_chart) = self.histogrammer.egui_heatmap(hist_name) {
                         plot_ui.bar_chart(bar_chart.color(color));
 
                         let stats_entries =
@@ -478,12 +478,10 @@ impl Processer {
                     }
                 }
 
-            } else {
-                if !self.cut_handler.cuts.is_empty() {
-                    ui.separator();
+            } else if !self.cut_handler.cuts.is_empty() {
+                ui.separator();
 
-                    ui.label("Recalculate histograms to filter with cuts");
-                }
+                ui.label("Recalculate histograms to filter with cuts");
             }
 
 

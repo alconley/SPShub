@@ -68,14 +68,11 @@ impl FitHandler {
         // buttons that will be displayed in the ui
         ui.horizontal(|ui| {
             // check to see if there is at least 2 region markers
-            if self.markers.region_markers.len() == 2 {
-                if ui
+            if self.markers.region_markers.len() == 2 && ui
                     .button("Fit")
                     .on_hover_text("Fit the current histogram data. Shortcut: 'F' key")
-                    .clicked()
-                {
-                    self.fit();
-                }
+                    .clicked() {
+                self.fit();
             }
 
             if self.current_fit.is_some() {
@@ -173,11 +170,9 @@ impl FitHandler {
                             }
 
                             // Conditionally show the "Save Fit Handler State" button
-                            if !self.fits.is_empty() {
-                                if ui.button("Save Fits").clicked() {
-                                    if let Err(e) = self.save_fits_to_file() {
-                                        eprintln!("Failed to save Fit Handler state: {}", e);
-                                    }
+                            if !self.fits.is_empty() && ui.button("Save Fits").clicked() {
+                                if let Err(e) = self.save_fits_to_file() {
+                                    eprintln!("Failed to save Fit Handler state: {}", e);
                                 }
                             }
 
@@ -262,10 +257,8 @@ impl FitHandler {
                                                 param.area.0, param.area.1
                                             )); // Area
 
-                                            if param_index == 0 {
-                                                if ui.button("X").clicked() {
-                                                    self.to_remove_index = Some(fit_index); // Mark for removal
-                                                }
+                                            if param_index == 0 && ui.button("X").clicked() {
+                                                self.to_remove_index = Some(fit_index); // Mark for removal
                                             }
 
                                             ui.end_row(); // Move to the next row for the next set of stats

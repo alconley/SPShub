@@ -60,13 +60,13 @@ pub enum ChannelMapError {
 
 impl From<std::io::Error> for ChannelMapError {
     fn from(e: std::io::Error) -> Self {
-        return ChannelMapError::IOError(e);
+        ChannelMapError::IOError(e)
     }
 }
 
 impl From<ParseIntError> for ChannelMapError {
     fn from(e: ParseIntError) -> Self {
-        return ChannelMapError::ParseError(e);
+        ChannelMapError::ParseError(e)
     }
 }
 
@@ -121,7 +121,7 @@ impl ChannelMap {
                 );
             }
         }
-        return cmap;
+        cmap
     }
 
     pub fn get_channel_data(&self, uuid: &u32) -> Option<&ChannelData> {

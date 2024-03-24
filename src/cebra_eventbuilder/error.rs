@@ -19,7 +19,7 @@ pub enum EVBError {
 
 impl From<std::io::Error> for EVBError {
     fn from(err: std::io::Error) -> EVBError {
-        return EVBError::FileError(err);
+        EVBError::FileError(err)
     }
 }
 

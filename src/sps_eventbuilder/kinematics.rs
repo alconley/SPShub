@@ -109,7 +109,7 @@ fn calculate_z_offset(params: &KineParameters, nuc_map: &MassMap) -> Option<f64>
     let rho = ejectile_p / ((ejectile.z as f64) * params.b_field * QBRHO2P);
     let val = (projectile.mass * ejectile.mass * params.projectile_ke / ejectile_ke).sqrt();
     let k = val * angle_rads.sin() / (ejectile.mass + residual.mass - val * angle_rads.cos());
-    return Some(-1.0 * rho * SPS_DISPERSION * SPS_MAGNIFICATION * k);
+    Some(-1.0 * rho * SPS_DISPERSION * SPS_MAGNIFICATION * k)
 }
 
 //Calculate weights for correcting focal plane position for kinematic shift

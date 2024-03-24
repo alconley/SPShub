@@ -92,11 +92,11 @@ impl MassMap {
     pub fn new() -> Result<Self, MassError> {
         let mut map = MassMap {
             map: HashMap::new(),
-            file: PathBuf::from(std::env::current_dir()?.join("etc").join("amdc_2016.txt")),
+            file: std::env::current_dir()?.join("etc").join("amdc_2016.txt"),
         };
         info!("Mass file: {:?}", map.file);
         map.init()?;
-        return Ok(map);
+        Ok(map)
     }
 
     fn init(&mut self) -> Result<(), MassError> {

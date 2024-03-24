@@ -46,7 +46,7 @@ impl Workspacer {
 
     fn refresh_files(&mut self) {
         if let Some(ref dir) = self.directory.clone() {
-            self.get_parquet_files_in_directory(&dir);
+            self.get_parquet_files_in_directory(dir);
             self.validate_selected_files(); // Ensure selected_files are still valid
         }
     }
@@ -140,7 +140,7 @@ impl Workspacer {
         egui::ScrollArea::vertical().show(ui, |ui| {
             for file in &self.files {
                 let file_stem = file.file_stem().unwrap_or_default().to_string_lossy();
-                let is_selected = self.selected_files.contains(&file);
+                let is_selected = self.selected_files.contains(file);
 
                 let response = ui.selectable_label(is_selected, file_stem);
 

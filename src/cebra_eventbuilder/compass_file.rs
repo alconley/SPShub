@@ -74,7 +74,7 @@ impl<'a> CompassFile<'a> {
             return Err(EVBError::WavesError);
         }
 
-        return Ok(CompassFile {
+        Ok(CompassFile {
             file_handle: BufReader::with_capacity(datasize * BUFFER_SIZE_HITS, file),
             size_bytes: total_size,
             data_type: datatype,
@@ -83,7 +83,7 @@ impl<'a> CompassFile<'a> {
             shift_map: shifts,
             is_used: false,
             is_eof: false,
-        });
+        })
     }
 
     pub fn get_top_hit(&mut self) -> Result<&CompassData, EVBError> {
@@ -104,7 +104,7 @@ impl<'a> CompassFile<'a> {
             }
         }
 
-        return Ok(&self.current_hit);
+        Ok(&self.current_hit)
     }
 
     fn parse_top_hit(&mut self) -> Result<CompassData, EVBError> {
@@ -135,11 +135,11 @@ impl<'a> CompassFile<'a> {
         }
         let (_dataslice, _flags) = parse_u32(dataslice)?;
 
-        Ok(CompassData::new(&raw_data, &self.shift_map))
+        Ok(CompassData::new(&raw_data, self.shift_map))
     }
 
     pub fn is_eof(&self) -> bool {
-        return self.is_eof;
+        self.is_eof
     }
 
     pub fn set_hit_used(&mut self) {

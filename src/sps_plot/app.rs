@@ -168,7 +168,7 @@ impl SPSPlotApp {
 
                 ui.separator();
 
-                ui.label(format!("{}", reaction.reaction_identifier));
+                ui.label(reaction.reaction_identifier.to_string());
 
                 if ui.button("Get Reaction").clicked() {
                     Self::populate_reaction_data(reaction);
@@ -206,8 +206,8 @@ impl SPSPlotApp {
             .get_data(&(reaction.ejectile_z as u32), &(reaction.ejectile_a as u32))
             .cloned();
 
-        reaction.resid_z = (reaction.target_z + reaction.projectile_z - reaction.ejectile_z) as i32;
-        reaction.resid_a = (reaction.target_a + reaction.projectile_a - reaction.ejectile_a) as i32;
+        reaction.resid_z = reaction.target_z + reaction.projectile_z - reaction.ejectile_z;
+        reaction.resid_a = reaction.target_a + reaction.projectile_a - reaction.ejectile_a;
 
         reaction.resid_data = mass_map
             .get_data(&(reaction.resid_z as u32), &(reaction.resid_a as u32))
@@ -250,7 +250,7 @@ impl SPSPlotApp {
 
         // Using an async block, note that this requires an executor to run the block synchronously
         let fetcher = ExcitationFetcher::new();
-        fetcher.fetch_excitation_levels(&isotope);
+        fetcher.fetch_excitation_levels(isotope);
 
         let levels_lock = fetcher.excitation_levels.lock().unwrap();
         let error_lock = fetcher.error_message.lock().unwrap();

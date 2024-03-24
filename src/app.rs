@@ -10,6 +10,7 @@ use crate::{
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
+#[derive(Default)]
 pub struct TemplateApp {
     // Example stuff:
     // #[serde(skip)]
@@ -34,31 +35,7 @@ pub struct TemplateApp {
     plotter_app_visible: bool,
 }
 
-impl Default for TemplateApp {
-    fn default() -> Self {
-        Self {
-            #[cfg(not(target_arch = "wasm32"))]
-            sps_cebra_evb_app: SPSCeBrAEvbApp::default(), // Default initialization.
-            sps_cebra_evb_app_visible: false,
 
-            #[cfg(not(target_arch = "wasm32"))]
-            sps_evb_app: SPSEvbApp::default(), // Default initialization.
-            sps_evb_app_visible: false,
-
-            #[cfg(not(target_arch = "wasm32"))]
-            cebra_evb_app: CeBrAEvbApp::default(), // Default initialization.
-            cebra_evb_app_visible: false,
-
-            #[cfg(not(target_arch = "wasm32"))]
-            sps_plot_app: SPSPlotApp::default(),
-            sps_plot_app_visible: false,
-
-            #[cfg(not(target_arch = "wasm32"))]
-            plotter_app: PlotterApp::default(),
-            plotter_app_visible: false,
-        }
-    }
-}
 
 impl TemplateApp {
     /// Called once before the first frame.

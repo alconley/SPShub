@@ -39,9 +39,9 @@ pub fn decompose_uuid_to_board_channel(uuid: &u32) -> (u32, u32) {
     let uuid_sqrt = (*uuid as f64).sqrt().floor() as u32;
     let test = uuid - uuid_sqrt * uuid_sqrt;
     if test >= uuid_sqrt {
-        return (uuid_sqrt, test - uuid_sqrt);
+        (uuid_sqrt, test - uuid_sqrt)
     } else {
-        return (test, uuid_sqrt);
+        (test, uuid_sqrt)
     }
 }
 
@@ -71,16 +71,12 @@ impl CompassData {
     }
 
     pub fn is_default(&self) -> bool {
-        if self.timestamp == 0.0 {
-            return true;
-        } else {
-            return false;
-        }
+        self.timestamp == 0.0
     }
 
     #[allow(dead_code)]
     pub fn get_board_channel(&self) -> (u32, u32) {
-        return decompose_uuid_to_board_channel(&self.uuid);
+        decompose_uuid_to_board_channel(&self.uuid)
     }
 }
 

@@ -192,7 +192,7 @@ fn process_run(
 
     clean_up_unpack_dir(&params.unpack_dir_path)?;
 
-    return Ok(());
+    Ok(())
 }
 
 pub struct ProcessParams {
@@ -225,8 +225,8 @@ pub fn process_runs(
             scalerout_file_path: params.output_dir.join(format!("run_{}_scalers.txt", run)),
             channel_map: &channel_map,
             shift_map: &Some(shift_map.clone()),
-            coincidence_window: params.coincidence_window.clone(),
-            run_number: run.clone(),
+            coincidence_window: params.coincidence_window,
+            run_number: run,
         };
 
         match progress.lock() {

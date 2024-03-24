@@ -77,7 +77,7 @@ impl Default for ChannelData {
         fields.into_iter().for_each(|f| {
             data.fields.insert(f, vec![]);
         });
-        return data;
+        data
     }
 }
 
@@ -227,6 +227,6 @@ impl ChannelData {
             .map(|field| -> Series { Series::new(field.0.as_ref(), field.1) })
             .collect();
 
-        return sps_cols;
+        sps_cols
     }
 }

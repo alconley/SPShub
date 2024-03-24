@@ -138,20 +138,18 @@ impl EVBApp {
     }
 
     fn check_and_shutdown_processing_thread(&mut self) {
-        if self.thread_handle.is_some() {
-            if self.thread_handle.as_ref().unwrap().is_finished() {
-                match self.thread_handle.take().unwrap().join() {
-                    Ok(result) => {
-                        match result {
-                            Ok(_) => info!("Finished processing the run"),
-                            Err(x) => error!(
-                                "An error occured while processing the run: {x}. Job stopped."
-                            ),
-                        };
-                    }
-                    Err(_) => error!("An error occured in joining the processing thread!"),
-                };
-            }
+        if self.thread_handle.is_some() && self.thread_handle.as_ref().unwrap().is_finished() {
+            match self.thread_handle.take().unwrap().join() {
+                Ok(result) => {
+                    match result {
+                        Ok(_) => info!("Finished processing the run"),
+                        Err(x) => error!(
+                            "An error occured while processing the run: {x}. Job stopped."
+                        ),
+                    };
+                }
+                Err(_) => error!("An error occured in joining the processing thread!"),
+            };
         }
     }
 

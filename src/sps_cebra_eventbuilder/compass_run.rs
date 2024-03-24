@@ -104,7 +104,7 @@ fn process_run(
 
     let mut evb = EventBuilder::new(&params.coincidence_window);
     let mut analyzed_data = ChannelData::default();
-    let x_weights = calculate_weights(&k_params, params.nuc_map);
+    let x_weights = calculate_weights(k_params, params.nuc_map);
 
     let mut earliest_file_index: Option<usize>;
 
@@ -197,7 +197,7 @@ fn process_run(
 
     clean_up_unpack_dir(&params.unpack_dir_path)?;
 
-    return Ok(());
+    Ok(())
 }
 
 pub struct ProcessParams {
@@ -233,8 +233,8 @@ pub fn process_runs(
             nuc_map: &mass_map,
             channel_map: &channel_map,
             shift_map: &Some(shift_map.clone()),
-            coincidence_window: params.coincidence_window.clone(),
-            run_number: run.clone(),
+            coincidence_window: params.coincidence_window,
+            run_number: run,
         };
 
         match progress.lock() {

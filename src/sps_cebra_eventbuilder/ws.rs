@@ -48,7 +48,7 @@ impl Workspace {
                 parent_dir: parent.to_path_buf(),
             });
         } else if !parent.exists() {
-            match fs::create_dir_all(&parent) {
+            match fs::create_dir_all(parent) {
                 Ok(_) => {
                     return {
                         let ws = Workspace {
@@ -134,6 +134,6 @@ impl Workspace {
             };
         }
 
-        return Ok(());
+        Ok(())
     }
 }

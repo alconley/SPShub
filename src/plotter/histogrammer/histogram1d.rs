@@ -10,7 +10,7 @@ impl Histogram {
     pub fn new(number_of_bins: usize, range: (f64, f64)) -> Self {
         Histogram {
             bins: vec![0; number_of_bins],
-            range: range,
+            range,
             bin_width: (range.1 - range.0) / number_of_bins as f64,
         }
     }

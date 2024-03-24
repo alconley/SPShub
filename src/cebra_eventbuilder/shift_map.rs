@@ -68,9 +68,9 @@ impl ShiftMap {
 
     pub fn get_timeshift(&self, id: &u32) -> f64 {
         if let Some(value) = self.map.get(id) {
-            return *value;
+            *value
         } else {
-            return 0.0;
+            0.0
         }
     }
 }
