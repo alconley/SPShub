@@ -7,41 +7,41 @@ use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum MassError {
-    MassFileNotFoundError,
-    MassFileParseError,
-    MassFileParseIntError(std::num::ParseIntError),
-    MassFileParseFloatError(std::num::ParseFloatError),
+    NotFound,
+    FileParse,
+    ParseInt(std::num::ParseIntError),
+    ParseFloat(std::num::ParseFloatError),
 }
 
 impl From<std::io::Error> for MassError {
     fn from(_value: std::io::Error) -> Self {
-        MassError::MassFileNotFoundError
+        MassError::NotFound
     }
 }
 
 impl From<std::num::ParseIntError> for MassError {
     fn from(value: std::num::ParseIntError) -> Self {
-        MassError::MassFileParseIntError(value)
+        MassError::ParseInt(value)
     }
 }
 
 impl From<std::num::ParseFloatError> for MassError {
     fn from(value: std::num::ParseFloatError) -> Self {
-        MassError::MassFileParseFloatError(value)
+        MassError::ParseFloat(value)
     }
 }
 
 impl Display for MassError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MassError::MassFileNotFoundError => {
+            MassError::NotFound => {
                 write!(f, "Could not find and open amdc mass file!")
             }
-            MassError::MassFileParseError => write!(f, "Unable to parse amdc mass file!"),
-            MassError::MassFileParseIntError(e) => {
+            MassError::FileParse => write!(f, "Unable to parse amdc mass file!"),
+            MassError::ParseInt(e) => {
                 write!(f, "Unable to parse amdc mass file with error {}", e)
             }
-            MassError::MassFileParseFloatError(e) => {
+            MassError::ParseFloat(e) => {
                 write!(f, "Unable to parse amdc mass file with error {}", e)
             }
         }
@@ -121,7 +121,7 @@ impl MassMap {
                             - (data.z as f64) * ELECTRON_MASS;
                     self.map.insert(generate_nucleus_id(&data.z, &data.a), data);
                 }
-                Err(_) => return Err(MassError::MassFileParseError),
+                Err(_) => return Err(MassError::FileParse),
             };
         }
 

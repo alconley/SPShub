@@ -1,7 +1,7 @@
 pub mod app;
 mod cutter;
 mod fitter;
-mod histogrammer;
+mod histoer;
 mod lazyframer;
 mod processer;
 mod workspacer;

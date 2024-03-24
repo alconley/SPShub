@@ -8,70 +8,70 @@ use std::fmt::Display;
 
 #[derive(Debug)]
 pub enum EVBError {
-    CompressorError(DecompressError),
-    WavesError,
-    FileError(std::io::Error),
-    ParserError,
-    ChannelError(ChannelMapError),
-    DataFrameError(PolarsError),
-    MassMapError(MassError),
-    ShiftMapError(ShiftError),
-    SyncError,
+    Compressor(DecompressError),
+    Waves,
+    File(std::io::Error),
+    Parser,
+    Channel(ChannelMapError),
+    DataFrame(PolarsError),
+    MassMap(MassError),
+    ShiftMap(ShiftError),
+    Sync,
 }
 
 impl From<std::io::Error> for EVBError {
     fn from(err: std::io::Error) -> EVBError {
-        EVBError::FileError(err)
+        EVBError::File(err)
     }
 }
 
 impl From<DecompressError> for EVBError {
     fn from(err: DecompressError) -> EVBError {
-        EVBError::CompressorError(err)
+        EVBError::Compressor(err)
     }
 }
 
 impl From<ChannelMapError> for EVBError {
     fn from(err: ChannelMapError) -> EVBError {
-        EVBError::ChannelError(err)
+        EVBError::Channel(err)
     }
 }
 
 impl From<PolarsError> for EVBError {
     fn from(err: PolarsError) -> EVBError {
-        EVBError::DataFrameError(err)
+        EVBError::DataFrame(err)
     }
 }
 
 impl From<MassError> for EVBError {
     fn from(value: MassError) -> Self {
-        EVBError::MassMapError(value)
+        EVBError::MassMap(value)
     }
 }
 
 impl From<ShiftError> for EVBError {
     fn from(value: ShiftError) -> Self {
-        EVBError::ShiftMapError(value)
+        EVBError::ShiftMap(value)
     }
 }
 
 impl Display for EVBError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EVBError::CompressorError(x) => write!(f, "Run had a decompression error: {}", x),
-            EVBError::WavesError => write!(
+            EVBError::Compressor(x) => write!(f, "Run had a decompression error: {}", x),
+            EVBError::Waves => write!(
                 f,
                 "Run found a file with waveform data, which is not supported!"
             ),
-            EVBError::FileError(x) => write!(f, "Run had a file I/O error: {}", x),
-            EVBError::ParserError => write!(f, "Run had an error parsing the data from files"),
-            EVBError::ChannelError(x) => {
+            EVBError::File(x) => write!(f, "Run had a file I/O error: {}", x),
+            EVBError::Parser => write!(f, "Run had an error parsing the data from files"),
+            EVBError::Channel(x) => {
                 write!(f, "Run had an error occur with the channel map: {}", x)
             }
-            EVBError::DataFrameError(x) => write!(f, "Run had an error using polars: {}", x),
-            EVBError::MassMapError(x) => write!(f, "Run had an error with the mass data: {}", x),
-            EVBError::ShiftMapError(x) => write!(f, "Run had an error with the shift map: {}", x),
-            EVBError::SyncError => write!(f, "Run was unable to access shared progress resource"),
+            EVBError::DataFrame(x) => write!(f, "Run had an error using polars: {}", x),
+            EVBError::MassMap(x) => write!(f, "Run had an error with the mass data: {}", x),
+            EVBError::ShiftMap(x) => write!(f, "Run had an error with the shift map: {}", x),
+            EVBError::Sync => write!(f, "Run was unable to access shared progress resource"),
         }
     }
 }

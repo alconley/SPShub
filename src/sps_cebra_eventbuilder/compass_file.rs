@@ -12,21 +12,21 @@ const BUFFER_SIZE_HITS: usize = 24000; // Size in Compass hits of the buffer for
 
 fn parse_u16(buffer: &[u8]) -> Result<(&[u8], u16), EVBError> {
     match le_u16::<&[u8], nom::error::Error<&[u8]>>(buffer) {
-        Err(_x) => Err(EVBError::ParserError),
+        Err(_x) => Err(EVBError::Parser),
         Ok(x) => Ok(x),
     }
 }
 
 fn parse_u32(buffer: &[u8]) -> Result<(&[u8], u32), EVBError> {
     match le_u32::<&[u8], nom::error::Error<&[u8]>>(buffer) {
-        Err(_x) => Err(EVBError::ParserError),
+        Err(_x) => Err(EVBError::Parser),
         Ok(x) => Ok(x),
     }
 }
 
 fn parse_u64(buffer: &[u8]) -> Result<(&[u8], u64), EVBError> {
     match le_u64::<&[u8], nom::error::Error<&[u8]>>(buffer) {
-        Err(_x) => Err(EVBError::ParserError),
+        Err(_x) => Err(EVBError::Parser),
         Ok(x) => Ok(x),
     }
 }
@@ -71,7 +71,7 @@ impl<'a> CompassFile<'a> {
             datasize += 8;
         }
         if header_word & CompassDataType::WAVES.bits() != 0 {
-            return Err(EVBError::WavesError);
+            return Err(EVBError::Waves);
         }
 
         Ok(CompassFile {
@@ -89,12 +89,12 @@ impl<'a> CompassFile<'a> {
     pub fn get_top_hit(&mut self) -> Result<&CompassData, EVBError> {
         if self.is_used {
             self.current_hit = match self.parse_top_hit() {
-                Err(EVBError::FileError(e)) => match e.kind() {
+                Err(EVBError::File(e)) => match e.kind() {
                     std::io::ErrorKind::UnexpectedEof => {
                         self.is_eof = true;
                         CompassData::default()
                     }
-                    _ => return Err(EVBError::FileError(e)),
+                    _ => return Err(EVBError::File(e)),
                 },
                 Ok(data) => {
                     self.is_used = false;

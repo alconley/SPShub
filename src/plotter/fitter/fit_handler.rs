@@ -9,7 +9,7 @@ use std::fs::File;
 
 use super::egui_markers::EguiFitMarkers;
 
-use crate::plotter::histogrammer::histogram1d::Histogram;
+use crate::plotter::histoer::histogram1d::Histogram;
 use super::fit::Fit;
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]

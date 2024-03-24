@@ -14,7 +14,7 @@ use super::background_fitter::BackgroundFitter;
 use super::egui_markers::EguiFitMarkers;
 use super::gaussian_fitter::GaussianFitter;
 
-use crate::plotter::histogrammer::histogram1d::Histogram;
+use crate::plotter::histoer::histogram1d::Histogram;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Fit {

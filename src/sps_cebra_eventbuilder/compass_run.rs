@@ -36,11 +36,10 @@ struct RunParams<'a> {
 }
 
 fn clean_up_unpack_dir(unpack_dir: &Path) -> Result<(), EVBError> {
-    for item in unpack_dir.read_dir()? {
-        if let Ok(entry) = item {
-            if entry.metadata()?.is_file() {
-                std::fs::remove_file(entry.path())?;
-            }
+
+    for entry in unpack_dir.read_dir()?.flatten() {
+        if entry.metadata()?.is_file() {
+            std::fs::remove_file(entry.path())?;
         }
     }
 
@@ -172,7 +171,7 @@ fn process_run(
 
             match progress.lock() {
                 Ok(mut prog) => *prog = (flush_count as f64 * flush_percent) as f32,
-                Err(_) => return Err(EVBError::SyncError),
+                Err(_) => return Err(EVBError::Sync),
             };
         }
     }
@@ -187,10 +186,7 @@ fn process_run(
             &frag_number,
         )?;
     }
-    match scaler_list {
-        Some(list) => list.write_scalers(&params.scalerout_file_path)?,
-        None => (),
-    };
+    if let Some(list) = scaler_list { list.write_scalers(&params.scalerout_file_path)? }
 
     //To be safe, manually drop all files in unpack dir before deleting all the files
     drop(files);
@@ -239,7 +235,7 @@ pub fn process_runs(
 
         match progress.lock() {
             Ok(mut prog) => *prog = 0.0,
-            Err(_) => return Err(EVBError::SyncError),
+            Err(_) => return Err(EVBError::Sync),
         };
 
         //Skip over run if it doesnt exist

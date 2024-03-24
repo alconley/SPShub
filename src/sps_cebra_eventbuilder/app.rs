@@ -501,17 +501,14 @@ impl EVBApp {
                     .set_directory(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
                     .pick_folder();
 
-                match result {
-                    Some(real_path) => {
-                        self.parameters.workspace = match Workspace::new(&real_path) {
-                            Ok(ws) => Some(ws),
-                            Err(e) => {
-                                eprintln!("Error creating workspace: {}", e);
-                                None
-                            }
+                if let Some(real_path) = result {
+                    self.parameters.workspace = match Workspace::new(&real_path) {
+                        Ok(ws) => Some(ws),
+                        Err(e) => {
+                            eprintln!("Error creating workspace: {}", e);
+                            None
                         }
                     }
-                    None => (),
                 }
             }
 
@@ -604,10 +601,7 @@ impl App for EVBApp {
                         .add_filter("YAML file", &["yaml"])
                         .pick_file();
 
-                    match result {
-                        Some(real_path) => self.read_params_from_file(&real_path),
-                        None => (),
-                    }
+                        if let Some(real_path) = result { self.read_params_from_file(&real_path) }
                 }
                 if ui.button("Save Config...").clicked() {
                     let result = rfd::FileDialog::new()
@@ -617,10 +611,7 @@ impl App for EVBApp {
                         .add_filter("YAML file", &["yaml"])
                         .save_file();
 
-                    match result {
-                        Some(real_path) => self.write_params_to_file(&real_path),
-                        None => (),
-                    }
+                        if let Some(real_path) = result { self.write_params_to_file(&real_path) }
                 }
             });
 

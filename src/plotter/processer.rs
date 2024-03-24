@@ -1,7 +1,7 @@
 use super::cutter::cut_handler::CutHandler;
 use super::fitter::fit_handler::FitHandler;
-use super::histogrammer::histogram_script::add_histograms;
-use super::histogrammer::histogrammer::{HistogramTypes, Histogrammer};
+use super::histoer::histogram_script::add_histograms;
+use super::histoer::histogrammer::{HistogramTypes, Histogrammer};
 use super::lazyframer::LazyFramer;
 
 use std::collections::HashMap;

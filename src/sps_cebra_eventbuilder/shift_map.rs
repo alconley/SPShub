@@ -14,38 +14,38 @@ pub struct ShiftMapEntry {
 
 #[derive(Debug)]
 pub enum ShiftError {
-    FileError(std::io::Error),
-    ChannelError(ParseIntError),
-    TimeshiftError(ParseFloatError),
+    File(std::io::Error),
+    Channel(ParseIntError),
+    Timeshift(ParseFloatError),
 }
 
 impl Display for ShiftError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ShiftError::FileError(x) => write!(f, "ShiftMap had an IO error: {}", x),
-            ShiftError::ChannelError(x) => {
+            ShiftError::File(x) => write!(f, "ShiftMap had an IO error: {}", x),
+            ShiftError::Channel(x) => {
                 write!(f, "ShiftMap could not parse board/channel: {}", x)
             }
-            ShiftError::TimeshiftError(x) => write!(f, "ShiftMap could not parse timeshift: {}", x),
+            ShiftError::Timeshift(x) => write!(f, "ShiftMap could not parse timeshift: {}", x),
         }
     }
 }
 
 impl From<std::io::Error> for ShiftError {
     fn from(value: std::io::Error) -> Self {
-        ShiftError::FileError(value)
+        ShiftError::File(value)
     }
 }
 
 impl From<ParseIntError> for ShiftError {
     fn from(value: ParseIntError) -> Self {
-        ShiftError::ChannelError(value)
+        ShiftError::Channel(value)
     }
 }
 
 impl From<ParseFloatError> for ShiftError {
     fn from(value: ParseFloatError) -> Self {
-        ShiftError::TimeshiftError(value)
+        ShiftError::Timeshift(value)
     }
 }
 

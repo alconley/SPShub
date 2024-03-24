@@ -82,9 +82,14 @@ impl ScalerList {
         let file = File::create(filepath)?;
         let mut writer = BufWriter::new(file);
 
-        writer.write("SPS Scaler Data\n".as_bytes())?;
+        // writer.write("SPS Scaler Data\n".as_bytes())?;
+        // for scaler in &self.list {
+        //     writer.write(format!("{} {}\n", scaler.name, scaler.value).as_bytes())?;
+        // }
+
+        writer.write_all("SPS Scaler Data\n".as_bytes())?;
         for scaler in &self.list {
-            writer.write(format!("{} {}\n", scaler.name, scaler.value).as_bytes())?;
+            writer.write_all(format!("{} {}\n", scaler.name, scaler.value).as_bytes())?;
         }
         Ok(())
     }

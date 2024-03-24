@@ -186,6 +186,7 @@ impl Histogrammer {
     }
 
     // Adds and fills a 2D histogram with data from Polars LazyFrame columns.
+    #[allow(clippy::too_many_arguments)]
     pub fn add_fill_hist2d(
         &mut self,
         name: &str,

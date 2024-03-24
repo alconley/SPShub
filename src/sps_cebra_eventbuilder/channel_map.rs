@@ -107,14 +107,17 @@ pub struct ChannelMap {
 }
 
 impl ChannelMap {
-    pub fn new(boards: &Vec<Board>) -> ChannelMap {
+    pub fn new(boards: &[Board]) -> ChannelMap {
         let mut cmap = ChannelMap {
             map: HashMap::new(),
         };
         for (board_index, board) in boards.iter().enumerate() {
             for (channel_index, channel) in board.channels.iter().enumerate() {
-                let mut data = ChannelData::default();
-                data.channel_type = *channel;
+                
+                let data = ChannelData {
+                    channel_type: *channel,
+                };
+
                 cmap.map.insert(
                     generate_board_channel_uuid(&(board_index as u32), &(channel_index as u32)),
                     data,

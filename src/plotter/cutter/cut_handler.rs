@@ -1,7 +1,6 @@
 use super::egui_polygon::EditableEguiPolygon;
 
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -101,6 +100,7 @@ impl CutHandler {
         Ok(())
     }
 
+    /* 
     pub fn _filter_files_and_save_separately(
         &mut self,
         file_paths: Vec<PathBuf>,
@@ -142,6 +142,7 @@ impl CutHandler {
 
         Ok(())
     }
+    */
 
     pub fn cut_handler_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
@@ -175,7 +176,7 @@ impl CutHandler {
             .selected_text(current_selection.clone())
             .show_ui(ui, |ui| {
                 // Iterate over all cut IDs in the HashMap and add them as selectable items
-                for (cut_id, _) in &self.cuts {
+                for cut_id in self.cuts.keys() {
                     ui.selectable_value(&mut current_selection, cut_id.clone(), cut_id);
                 }
             });
