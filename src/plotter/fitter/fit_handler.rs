@@ -23,16 +23,6 @@ pub struct FitHandler {
 }
 
 impl FitHandler {
-    pub fn new() -> Self {
-        Self {
-            histogram: None,
-            fits: Vec::new(),
-            current_fit: None,
-            markers: EguiFitMarkers::new(),
-            show_fit_stats: false,
-            to_remove_index: None,
-        }
-    }
 
     pub fn interactive_keybinds(&mut self, ui: &mut egui::Ui) {
         // remove the closest marker to the cursor and the fit

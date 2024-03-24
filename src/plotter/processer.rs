@@ -183,7 +183,8 @@ impl Processer {
                 let fit_handler = self
                     .fit_handler
                     .entry(hist_name.clone())
-                    .or_insert_with(FitHandler::new);
+                    .or_default();
+
                 fit_handler.histogram = Some(hist.clone()); // Set the histogram for the fit handler
                 fit_handler.interactive_keybinds(ui); // enable the key binds to add markers and draw the fits
 
@@ -215,7 +216,7 @@ impl Processer {
                         plot_ui.line(step_line);
 
                         let stats_entries = hist.legend_entries(plot_min_x, plot_max_x);
-                        for (_i, entry) in stats_entries.iter().enumerate() {
+                        for entry in stats_entries.iter() {
                             plot_ui.text(
                                 Text::new(PlotPoint::new(0, 0), " ") // Placeholder for positioning; adjust as needed
                                     .highlight(false)
@@ -277,7 +278,7 @@ impl Processer {
                         let stats_entries =
                             hist.legend_entries(plot_min_x, plot_max_x, plot_min_y, plot_max_y);
 
-                        for (_i, entry) in stats_entries.iter().enumerate() {
+                        for entry in stats_entries.iter() {
                             plot_ui.text(
                                 Text::new(PlotPoint::new(0, 0), " ") // Placeholder for positioning; adjust as needed
                                     .highlight(false)
@@ -354,7 +355,7 @@ impl Processer {
 
                             let stats_entries = hist.legend_entries(plot_min_x, plot_max_x);
 
-                            for (_i, entry) in stats_entries.iter().enumerate() {
+                            for entry in stats_entries.iter() {
                                 plot_ui.text(
                                     Text::new(PlotPoint::new(0, 0), " ") // Placeholder for positioning; adjust as needed
                                         .highlight(false)
@@ -373,7 +374,7 @@ impl Processer {
                             let stats_entries =
                                 hist.legend_entries(plot_min_x, plot_max_x, plot_min_y, plot_max_y);
 
-                            for (_i, entry) in stats_entries.iter().enumerate() {
+                            for entry in stats_entries.iter() {
                                 plot_ui.text(
                                     Text::new(PlotPoint::new(0, 0), " ") // Placeholder for positioning; adjust as needed
                                         .highlight(false)

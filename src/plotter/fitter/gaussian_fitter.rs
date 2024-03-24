@@ -264,7 +264,7 @@ impl GaussianFitter {
 
     pub fn draw_decomposition_fit_lines(&self, plot_ui: &mut PlotUi, color: Color32) {
         if let Some(decomposition_fit_line_points) = &self.decomposition_fit_line_points {
-            for (_index, points) in decomposition_fit_line_points.iter().enumerate() {
+            for points in decomposition_fit_line_points.iter() {
                 /*
                 // get the gaussian parameters
                 if let Some(params) = &self.fit_params {
