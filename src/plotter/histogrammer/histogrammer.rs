@@ -1,6 +1,10 @@
 use eframe::egui::{Color32, Stroke};
 use std::collections::HashMap;
 
+use rfd::FileDialog;
+use serde_json; // or use serde_yaml for YAML serialization
+use std::fs::File;
+
 use egui_plot::{Bar, BarChart, Line, Orientation, PlotPoints};
 use polars::prelude::*;
 
@@ -239,6 +243,22 @@ impl Histogrammer {
     pub fn get_histogram_type(&self, name: &str) -> Option<&HistogramTypes> {
         self.histogram_list.get(name)
     }
+
+    // Function to save the Histogrammer as JSON using a file dialog
+    pub fn _save_to_json_with_dialog(&self) -> Result<(), std::io::Error> {
+        if let Some(path) = FileDialog::new()
+            .set_title("Save as JSON")
+            .add_filter("JSON files", &["json"])
+            .save_file() {
+            let file = File::create(path)?;
+            let writer = std::io::BufWriter::new(file);
+            serde_json::to_writer_pretty(writer, &self)?;
+            Ok(())
+        } else {
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "No file selected"))
+        }
+    }
+
 }
 
 // Function to generate a color based on a value using the Viridis colormap, the matplotlib default.

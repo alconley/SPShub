@@ -86,7 +86,7 @@ impl Processer {
                 // Default behavior for zooming and panning, with fixed parameters
                 let lock_x = false;
                 let lock_y = false;
-                let zoom_speed = 1.0; // Default zoom speed
+                let zoom_speed = 0.1; // Default zoom speed
                 let scroll_speed = 1.0; // Default scroll speed
                 let ctrl_to_zoom = false;
                 let shift_to_horizontal = false;

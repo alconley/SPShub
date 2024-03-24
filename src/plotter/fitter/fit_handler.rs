@@ -1,13 +1,16 @@
 use egui_plot::PlotUi;
 
-use egui::{Color32, Stroke};
-use egui_plot::{Line, PlotPoints};
+use egui::Color32;
 
-use super::background_fitter::BackgroundFitter;
+use rfd::FileDialog;
+
+use std::io::{self, Read};
+use std::fs::File;
+
 use super::egui_markers::EguiFitMarkers;
-use super::gaussian_fitter::GaussianFitter;
 
 use crate::plotter::histogrammer::histogram1d::Histogram;
+use super::fit::Fit;
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct FitHandler {
@@ -16,6 +19,7 @@ pub struct FitHandler {
     pub current_fit: Option<Fit>,
     pub markers: EguiFitMarkers,
     pub show_fit_stats: bool,
+    to_remove_index: Option<usize>,
 }
 
 impl FitHandler {
@@ -26,6 +30,7 @@ impl FitHandler {
             current_fit: None,
             markers: EguiFitMarkers::new(),
             show_fit_stats: false,
+            to_remove_index: None,
         }
     }
 
@@ -119,19 +124,82 @@ impl FitHandler {
             // Ensure there's a horizontal scroll area to contain both stats sections side by side
             egui::ScrollArea::horizontal().show(ui, |ui| {
                 ui.horizontal(|ui| {
+                    // Current Fits
                     ui.vertical(|ui| {
-                        // Display current fit stats in a vertical layout within the first column
-                        self.current_fit_stats_labels(ui);
+
+                        ui.horizontal(|ui| {
+
+                            ui.label("Current Fit");
+                
+                            if ui.button("Load Fit").clicked() {
+                                if let Err(e) = self.load_temp_fit() {
+                                    eprintln!("Failed to save fit: {}", e);
+                                }
+                            }
+
+                            if let Some(fit) = &mut self.current_fit {
+                                if ui.button("Save Fit").clicked() {
+                                    if let Err(e) = fit.save_fit_to_file() {
+                                        eprintln!("Failed to save fit: {}", e);
+                                    }
+                                }
+                            }
+
+                        });
+
+                        if let Some(fit) = &mut self.current_fit {
+                            fit.fit_ui(ui);
+                        } else {
+                            ui.label("No fit available");
+                        }
                     });
 
                     ui.separator();
 
+                    // Stored Fits
                     ui.vertical(|ui| {
                         // Display stored fits stats in a vertical layout within the second column
+
+                        ui.horizontal(|ui| {
+
+                            ui.label("Stored Fits");
+                
+                            // Add a button for loading the FitHandler state
+                            if ui.button("Load Fits").clicked() {
+                                match Self::load_fits_from_file() {
+                                    Ok(fit_handler) => *self = fit_handler,
+                                    Err(e) => eprintln!("Failed to load Fit Handler state: {}", e),
+                                }
+                            }
+
+                            // Conditionally show the "Save Fit Handler State" button
+                            if !self.fits.is_empty() {
+                                if ui.button("Save Fits").clicked() {
+                                    if let Err(e) = self.save_fits_to_file() {
+                                        eprintln!("Failed to save Fit Handler state: {}", e);
+                                    }
+                                }
+                            }
+
+                        });
+
                         self.stored_fit_stats_labels(ui);
                     });
                 });
             });
+        }
+    }
+
+    pub fn draw_fits(&mut self, plot_ui: &mut PlotUi) {
+        // draw the current fit
+        if let Some(fit) = &mut self.current_fit {
+            fit.draw(plot_ui, Color32::BLUE, Color32::from_rgb(255, 0, 255));
+        }
+
+        // draw the stored fits
+        for fit in &mut self.fits {
+            let color = Color32::from_rgb(162, 0, 255);
+            fit.draw(plot_ui, color, color);
         }
     }
 
@@ -154,53 +222,8 @@ impl FitHandler {
         }
     }
 
-    fn current_fit_stats_labels(&self, ui: &mut egui::Ui) {
-        if let Some(fit) = &self.current_fit {
-            ui.label("Current Fit");
-
-            if let Some(gaussian_fitter) = &fit.fit {
-                if let Some(params) = &gaussian_fitter.fit_params {
-                    egui::ScrollArea::vertical()
-                        .id_source("current_fit_scroll")
-                        .show(ui, |ui| {
-                            egui::Grid::new("current_fit_stats_grid")
-                                .striped(true) // Adds a subtle background color to every other row for readability
-                                // .min_col_width(100.0) // Ensures that each column has a minimum width for better alignment
-                                .show(ui, |ui| {
-                                    // Headers
-                                    ui.label("Fit #");
-                                    ui.label("Mean");
-                                    ui.label("FWHM");
-                                    ui.label("Area");
-                                    ui.end_row(); // End the header row
-
-                                    // Iterate over params to fill in the grid with fit statistics
-                                    for (index, param) in params.iter().enumerate() {
-                                        ui.label(format!("{}", index)); // Fit number
-                                        ui.label(format!(
-                                            "{:.2} ± {:.2}",
-                                            param.mean.0, param.mean.1
-                                        )); // Mean
-                                        ui.label(format!(
-                                            "{:.2} ± {:.2}",
-                                            param.fwhm.0, param.fwhm.1
-                                        )); // FWHM
-                                        ui.label(format!(
-                                            "{:.0} ± {:.0}",
-                                            param.area.0, param.area.1
-                                        )); // Area
-                                        ui.end_row(); // Move to the next row for the next set of stats
-                                    }
-                                });
-                        });
-                }
-            }
-        }
-    }
-
-    fn stored_fit_stats_labels(&self, ui: &mut egui::Ui) {
+    fn stored_fit_stats_labels(&mut self, ui: &mut egui::Ui) {
         if !self.fits.is_empty() {
-            ui.label("Stored Fits");
 
             egui::ScrollArea::vertical()
                 .id_source("stored_fit_scroll")
@@ -216,6 +239,8 @@ impl FitHandler {
                             ui.end_row(); // End the header row
 
                             // Iterate over stored fits to fill in the grid with fit statistics
+
+
                             for (fit_index, fit) in self.fits.iter().enumerate() {
                                 // Assuming each fit has a similar structure to current_fit
                                 // and contains fit parameters to display
@@ -236,13 +261,29 @@ impl FitHandler {
                                                 "{:.0} ± {:.0}",
                                                 param.area.0, param.area.1
                                             )); // Area
+
+                                            if param_index == 0 {
+                                                if ui.button("X").clicked() {
+                                                    self.to_remove_index = Some(fit_index); // Mark for removal
+                                                }
+                                            }
+
                                             ui.end_row(); // Move to the next row for the next set of stats
                                         }
                                     }
                                 }
+
+                                // if ui.button(format!("Remove Fit #{}", fit_index)).clicked() {
+                                //     self.to_remove_index = Some(fit_index); // Mark for removal
+                                // }
                             }
                         });
                 });
+
+            if let Some(index) = self.to_remove_index {
+                self.remove_fit_at_index(index);
+                self.to_remove_index = None;
+            }
         }
     }
 
@@ -259,188 +300,47 @@ impl FitHandler {
         }
     }
 
-    pub fn draw_fits(&mut self, plot_ui: &mut PlotUi) {
-        // draw the current fit
-        if let Some(fit) = &mut self.current_fit {
-            fit.draw(plot_ui, Color32::BLUE, Color32::from_rgb(255, 0, 255));
-        }
-
-        // draw the stored fits
-        for fit in &mut self.fits {
-            let color = Color32::from_rgb(162, 0, 255);
-            fit.draw(plot_ui, color, color);
-        }
-    }
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct Fit {
-    histogram: Histogram,
-    markers: EguiFitMarkers,
-    fit: Option<GaussianFitter>,
-    background: Option<BackgroundFitter>,
-}
-
-impl Fit {
-    pub fn new(histogram: Histogram, markers: EguiFitMarkers) -> Self {
-        Self {
-            histogram,
-            markers,
-            fit: None,
-            background: None,
+    fn remove_fit_at_index(&mut self, index: usize) {
+        if index < self.fits.len() {
+            self.fits.remove(index);
         }
     }
 
-    fn get_background_marker_data(&self) -> (Vec<f64>, Vec<f64>) {
-        let bg_markers = self.markers.background_markers.clone();
-
-        let mut y_values = Vec::new();
-        let mut x_values = Vec::new();
-
-        for x in bg_markers {
-            // get the bin index
-            if let Some(bin_index) = self.histogram.get_bin(x) {
-                let bin_center = self.histogram.range.0
-                    + (bin_index as f64 * self.histogram.bin_width)
-                    + (self.histogram.bin_width * 0.5);
-                x_values.push(bin_center);
-                y_values.push(self.histogram.bins[bin_index] as f64);
-            }
+    fn save_fits_to_file(&self) -> Result<(), io::Error> {
+        if let Some(path) = FileDialog::new()
+            .set_title("Save Fit Handler State")
+            .add_filter("YAML files", &["yaml"])
+            .save_file() {
+                let file = File::create(path)?;
+                serde_yaml::to_writer(file, &self)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
         }
-
-        (x_values, y_values)
-    }
-
-    fn fit_background(&mut self) -> Result<(), &'static str> {
-        let (x_values, y_values) = self.get_background_marker_data();
-
-        // Initialize BackgroundFitter with the obtained x and y values
-        let mut background_fitter = BackgroundFitter::new(x_values, y_values);
-
-        // Perform the fit and calculate background line points
-        background_fitter.fit()?;
-
-        // Update the background property with the fitted background_fitter
-        self.background = Some(background_fitter);
-
         Ok(())
     }
 
-    fn create_background_subtracted_histogram(&self) -> Result<Histogram, &'static str> {
-        if let Some(background_fitter) = &self.background {
-            let (slope, intercept) = background_fitter
-                .background_params
-                .ok_or("Background parameters not set.")?;
+    fn load_fits_from_file() -> Result<Self, io::Error> {
+        if let Some(path) = FileDialog::new()
+            .set_title("Load Fit Handler State")
+            .add_filter("YAML files", &["yaml"])
+            .pick_file() {
+                let mut file = File::open(path)?;
+                let mut contents = String::new();
+                file.read_to_string(&mut contents)?;
+                let fit_handler: Self = serde_yaml::from_str(&contents)
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+                return Ok(fit_handler);
+        }
+        Err(io::Error::new(io::ErrorKind::NotFound, "Failed to load Fit Handler state"))
+    }
 
-            let mut subtracted_histogram = self.histogram.clone();
-
-            // Subtract background estimate from each bin
-            for (index, bin_count) in subtracted_histogram.bins.iter_mut().enumerate() {
-                let bin_center = self.histogram.range.0
-                    + (self.histogram.bin_width * index as f64)
-                    + (self.histogram.bin_width / 2.0);
-                let background_estimate = slope * bin_center + intercept;
-                *bin_count = bin_count.saturating_sub(background_estimate.round() as u32);
-            }
-
-            Ok(subtracted_histogram)
+    fn load_temp_fit(&mut self) -> Result<(), io::Error> {
+        // Attempt to load a Fit using the static method defined in Fit
+        if let Ok(fit) = Fit::load_fit_from_file() {
+            // If successful, update the current_fit with the loaded fit
+            self.current_fit = Some(fit);
+            Ok(())
         } else {
-            Err("No background fitter available for background subtraction.")
+            Err(io::Error::new(io::ErrorKind::NotFound, "Failed to load fit"))
         }
-    }
-
-    fn fit_gaussian(&mut self) -> Result<(), &'static str> {
-        // Ensure there are exactly two region markers to define a fit region
-        if self.markers.region_markers.len() != 2 {
-            return Err("Need two region markers to define a fit region.");
-        }
-
-        // remove peak markers that are outside the region markers
-        self.markers.remove_peak_markers_outside_region();
-
-        // if there are no background markers, use the region markers as defaults
-        if self.markers.background_markers.is_empty() {
-            self.markers
-                .background_markers
-                .push(self.markers.region_markers[0]);
-            self.markers
-                .background_markers
-                .push(self.markers.region_markers[1]);
-        }
-
-        // fit the background
-        let _ = self.fit_background();
-
-        // Ensure background subtraction has been performed
-        let bg_subtracted_histogram = self.create_background_subtracted_histogram()?;
-
-        // Extract x and y data between region markers
-        let start_bin = bg_subtracted_histogram
-            .get_bin(self.markers.region_markers[0])
-            .unwrap_or(0);
-        let end_bin = bg_subtracted_histogram
-            .get_bin(self.markers.region_markers[1])
-            .unwrap_or(bg_subtracted_histogram.bins.len() - 1);
-
-        let mut x_data = Vec::new();
-        let mut y_data = Vec::new();
-
-        for bin_index in start_bin..=end_bin {
-            let bin_center = bg_subtracted_histogram.range.0
-                + (bg_subtracted_histogram.bin_width * bin_index as f64)
-                + (bg_subtracted_histogram.bin_width / 2.0);
-            let bin_count = bg_subtracted_histogram.bins[bin_index];
-            x_data.push(bin_center);
-            y_data.push(bin_count as f64);
-        }
-
-        // Initialize GaussianFitter with x and y data
-        let mut gaussian_fitter =
-            GaussianFitter::new(x_data, y_data, self.markers.peak_markers.clone());
-
-        // Perform Gaussian fit
-        gaussian_fitter.multi_gauss_fit();
-
-        // get the decomposition fit lines
-        gaussian_fitter.get_fit_decomposition_line_points();
-
-        // update peak markers with the fitted peak markers
-        self.markers.peak_markers = gaussian_fitter.peak_markers.clone();
-
-        // Update the fit property with the fitted GaussianFitter
-        self.fit = Some(gaussian_fitter);
-
-        Ok(())
-    }
-
-    fn draw(
-        &mut self,
-        plot_ui: &mut PlotUi,
-        convoluted_color: Color32,
-        decomposition_color: Color32,
-    ) {
-        if let Some(background_fitter) = &self.background {
-            background_fitter.draw_background_line(plot_ui);
-
-            if let Some(gaussian_fitter) = &self.fit {
-                gaussian_fitter.draw_decomposition_fit_lines(plot_ui, decomposition_color);
-
-                let slope = background_fitter.background_params.unwrap().0;
-                let intercept = background_fitter.background_params.unwrap().1;
-
-                // Calculate and draw the convoluted fit
-                let convoluted_fit_points = gaussian_fitter
-                    .calculate_convoluted_fit_points_with_background(slope, intercept);
-                let line = Line::new(PlotPoints::Owned(convoluted_fit_points))
-                    .color(convoluted_color) // Choose a distinct color for the convoluted fit
-                    .stroke(Stroke::new(1.0, convoluted_color));
-                plot_ui.line(line);
-            }
-        }
-    }
-
-    fn clear(&mut self) {
-        self.fit = None;
-        self.background = None;
     }
 }

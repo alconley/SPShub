@@ -58,11 +58,11 @@ impl GaussianParams {
 
 #[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct GaussianFitter {
+    pub fit_params: Option<Vec<GaussianParams>>,
     x: Vec<f64>,
     y: Vec<f64>,
     pub peak_markers: Vec<f64>,
-    pub fit_params: Option<Vec<GaussianParams>>,
-
+    
     #[serde(skip)]
     pub decomposition_fit_line_points: Option<Vec<Vec<PlotPoint>>>,
 }
@@ -70,10 +70,10 @@ pub struct GaussianFitter {
 impl GaussianFitter {
     pub fn new(x: Vec<f64>, y: Vec<f64>, peak_markers: Vec<f64>) -> Self {
         Self {
+            fit_params: None,
             x,
             y,
             peak_markers,
-            fit_params: None,
             decomposition_fit_line_points: None,
         }
     }
