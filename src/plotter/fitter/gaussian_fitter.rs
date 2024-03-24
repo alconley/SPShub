@@ -139,7 +139,7 @@ impl GaussianFitter {
         let parameter_names = self.generate_parameter_names();
 
         // Add parameters for the first peak manually
-        let mut builder_proxy = SeparableModelBuilder::<f64>::new(&parameter_names)
+        let mut builder_proxy = SeparableModelBuilder::<f64>::new(parameter_names)
             .initial_parameters(initial_guess)
             .independent_variable(x_data)
             .function(&["mean0", "sigma"], Self::gaussian)
