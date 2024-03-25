@@ -293,41 +293,6 @@ impl EVBApp {
                                                 );
                                                 ui.selectable_value(
                                                     channel_type,
-                                                    ChannelType::Cebra0,
-                                                    "Cebra0",
-                                                );
-                                                ui.selectable_value(
-                                                    channel_type,
-                                                    ChannelType::Cebra1,
-                                                    "Cebra1",
-                                                );
-                                                ui.selectable_value(
-                                                    channel_type,
-                                                    ChannelType::Cebra2,
-                                                    "Cebra2",
-                                                );
-                                                ui.selectable_value(
-                                                    channel_type,
-                                                    ChannelType::Cebra3,
-                                                    "Cebra3",
-                                                );
-                                                ui.selectable_value(
-                                                    channel_type,
-                                                    ChannelType::Cebra4,
-                                                    "Cebra4",
-                                                );
-                                                ui.selectable_value(
-                                                    channel_type,
-                                                    ChannelType::Cebra5,
-                                                    "Cebra5",
-                                                );
-                                                ui.selectable_value(
-                                                    channel_type,
-                                                    ChannelType::Cebra6,
-                                                    "Cebra6",
-                                                );
-                                                ui.selectable_value(
-                                                    channel_type,
                                                     ChannelType::None,
                                                     "None",
                                                 );
@@ -403,29 +368,28 @@ impl EVBApp {
         }
 
         // Use a `ScrollArea` to ensure the UI can handle many entries
-        egui::ScrollArea::horizontal().show(ui, |ui| {
-            let mut to_remove = Vec::new(); // Indices of entries to remove
-            for (index, entry) in self.parameters.scaler_list_entries.iter_mut().enumerate() {
-                ui.horizontal(|ui| {
-                    ui.label("File Pattern:").on_hover_text(
-                        "Data_CH<channel_number>@<board_type>_<board_serial_number>",
-                    );
-                    ui.text_edit_singleline(&mut entry.file_pattern);
-                    ui.label("Scaler Name:");
-                    ui.text_edit_singleline(&mut entry.scaler_name);
+        // egui::ScrollArea::horizontal().show(ui, |ui| {
+        let mut to_remove = Vec::new(); // Indices of entries to remove
+        for (index, entry) in self.parameters.scaler_list_entries.iter_mut().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label("File Pattern:")
+                    .on_hover_text("Data_CH<channel_number>@<board_type>_<board_serial_number>");
+                ui.text_edit_singleline(&mut entry.file_pattern);
+                ui.label("Scaler Name:");
+                ui.text_edit_singleline(&mut entry.scaler_name);
 
-                    // Button to remove the current entry
-                    if ui.button("❌").clicked() {
-                        to_remove.push(index);
-                    }
-                });
-            }
+                // Button to remove the current entry
+                if ui.button("❌").clicked() {
+                    to_remove.push(index);
+                }
+            });
+        }
 
-            // Remove entries marked for removal, in reverse order to maintain correct indices
-            for &index in to_remove.iter().rev() {
-                self.parameters.scaler_list_entries.remove(index);
-            }
-        });
+        // Remove entries marked for removal, in reverse order to maintain correct indices
+        for &index in to_remove.iter().rev() {
+            self.parameters.scaler_list_entries.remove(index);
+        }
+        // });
     }
 
     fn kinematics_ui(&mut self, ui: &mut egui::Ui) {
@@ -601,7 +565,7 @@ impl EVBApp {
 
 impl App for EVBApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        egui::Window::new("SE-SPS + CeBrA Event Builder")
+        egui::Window::new("SE-SPS Event Builder")
             .min_width(200.0)
             .max_width(600.0)
             .show(ctx, |ui| {

@@ -15,4 +15,9 @@ mod plotter;
 #[cfg(not(target_arch = "wasm32"))]
 mod sps_cebra_eventbuilder;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod sps_eventbuilder;
+
+#[cfg(not(target_arch = "wasm32"))]
+mod cebra_eventbuilder;
 

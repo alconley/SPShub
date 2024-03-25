@@ -3,8 +3,8 @@
 use crate::{
     plotter::app::PlotterApp,
     sps_cebra_eventbuilder::app::EVBApp as SPSCeBrAEvbApp,
-    // sps_eventbuilder::app::EVBApp as SPSEvbApp,
-    // cebra_eventbuilder::app::EVBApp as CeBrAEvbApp,
+    sps_eventbuilder::app::EVBApp as SPSEvbApp,
+    cebra_eventbuilder::app::EVBApp as CeBrAEvbApp,
     sps_plot::app::SPSPlotApp,
 };
 
@@ -13,19 +13,18 @@ use crate::{
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 #[derive(Default)]
 pub struct TemplateApp {
-    // Example stuff:
-    // #[serde(skip)]
     #[cfg(not(target_arch = "wasm32"))]
     sps_cebra_evb_app: SPSCeBrAEvbApp,
     sps_cebra_evb_app_visible: bool,
 
-    // #[cfg(not(target_arch = "wasm32"))]
-    // sps_evb_app: SPSEvbApp,
-    // sps_evb_app_visible: bool,
+    #[cfg(not(target_arch = "wasm32"))]
+    sps_evb_app: SPSEvbApp,
+    sps_evb_app_visible: bool,
 
-    // #[cfg(not(target_arch = "wasm32"))]
-    // cebra_evb_app: CeBrAEvbApp,
-    // cebra_evb_app_visible: bool,
+    #[cfg(not(target_arch = "wasm32"))]
+    cebra_evb_app: CeBrAEvbApp,
+    cebra_evb_app_visible: bool,
+
     #[cfg(not(target_arch = "wasm32"))]
     sps_plot_app: SPSPlotApp,
     sps_plot_app_visible: bool,
@@ -45,11 +44,12 @@ impl TemplateApp {
                 sps_cebra_evb_app: SPSCeBrAEvbApp::new(cc),
                 sps_cebra_evb_app_visible: false,
 
-                // sps_evb_app: SPSEvbApp::new(cc),
-                // sps_evb_app_visible: false,
+                sps_evb_app: SPSEvbApp::new(cc),
+                sps_evb_app_visible: false,
 
-                // cebra_evb_app: CeBrAEvbApp::new(cc),
-                // cebra_evb_app_visible: false,
+                cebra_evb_app: CeBrAEvbApp::new(cc),
+                cebra_evb_app_visible: false,
+
                 sps_plot_app: SPSPlotApp::new(cc),
                 sps_plot_app_visible: false,
 
@@ -112,17 +112,40 @@ impl eframe::App for TemplateApp {
                 ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                     let full_width = ui.available_width(); // Get the full available width to make the label span the entire panel
 
+                    /* Event Builders */
                     ui.heading("Event Builders");
 
                     if ui
                         .add_sized(
                             [full_width, 0.0],
-                            egui::SelectableLabel::new(self.sps_cebra_evb_app_visible, "SPS+CeBrA"),
+                            egui::SelectableLabel::new(self.sps_evb_app_visible, "SE-SPS"),
+                        )
+                        .clicked()
+                    {
+                        self.sps_evb_app_visible = !self.sps_evb_app_visible;
+                    }
+
+                    if ui
+                        .add_sized(
+                            [full_width, 0.0],
+                            egui::SelectableLabel::new(self.cebra_evb_app_visible, "CeBrA"),
+                        )
+                        .clicked()
+                    {
+                        self.cebra_evb_app_visible = !self.cebra_evb_app_visible;
+                    }
+
+                    if ui
+                        .add_sized(
+                            [full_width, 0.0],
+                            egui::SelectableLabel::new(self.sps_cebra_evb_app_visible, "SE-SPS+CeBrA"),
                         )
                         .clicked()
                     {
                         self.sps_cebra_evb_app_visible = !self.sps_cebra_evb_app_visible;
                     }
+
+                    /* Event Builders */
 
                     ui.separator();
 
@@ -169,9 +192,28 @@ impl eframe::App for TemplateApp {
 
             // conditional statement to differentiate between web and non-web targets.
             if cfg!(target_arch = "wasm32") {
+
+                if self.cebra_evb_app_visible {
+                    // Instructions for web users, as event builders are not available.
+                    egui::Window::new("CeBrA Eventbuilder").show(ctx, |ui| {
+                        ui.label("Event builders are only available when compiling locally.");
+                        ui.label("Download: 'git clone https://github.com/alconley/SPShub.git'");
+                        ui.label("Run: 'cargo run --release'");
+                    });
+                }
+
+                if self.sps_evb_app_visible {
+                    // Instructions for web users, as event builders are not available.
+                    egui::Window::new("SE-SPS Eventbuilder").show(ctx, |ui| {
+                        ui.label("Event builders are only available when compiling locally.");
+                        ui.label("Download: 'git clone https://github.com/alconley/SPShub.git'");
+                        ui.label("Run: 'cargo run --release'");
+                    });
+                }
+
                 if self.sps_cebra_evb_app_visible {
                     // Instructions for web users, as event builders are not available.
-                    egui::Window::new("SPS+CeBrA Eventbuilder").show(ctx, |ui| {
+                    egui::Window::new("SE-SPS+CeBrA Eventbuilder").show(ctx, |ui| {
                         ui.label("Event builders are only available when compiling locally.");
                         ui.label("Download: 'git clone https://github.com/alconley/SPShub.git'");
                         ui.label("Run: 'cargo run --release'");
@@ -183,7 +225,6 @@ impl eframe::App for TemplateApp {
                         ui.label("Will be available soon. Hopefully lol");
                     });
 
-                    // self.sps_plot_app.update(ctx, frame);
                 }
 
                 if self.plotter_app_visible {
@@ -195,17 +236,17 @@ impl eframe::App for TemplateApp {
                 // Update calls for non-web targets are grouped to avoid repetitive conditional checks.
                 #[cfg(not(target_arch = "wasm32"))]
                 {
+                    if self.sps_evb_app_visible {
+                        self.sps_evb_app.update(ctx, frame);
+                    }
+
+                    if self.cebra_evb_app_visible {
+                        self.cebra_evb_app.update(ctx, frame);
+                    }
+
                     if self.sps_cebra_evb_app_visible {
                         self.sps_cebra_evb_app.update(ctx, frame);
                     }
-
-                    // if self.sps_evb_app_visible {
-                    //     self.sps_evb_app.update(ctx, frame);
-                    // }
-
-                    // if self.cebra_evb_app_visible {
-                    //     self.cebra_evb_app.update(ctx, frame);
-                    // }
 
                     if self.sps_plot_app_visible {
                         self.sps_plot_app.update(ctx, frame);
