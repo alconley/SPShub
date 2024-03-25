@@ -180,10 +180,7 @@ impl Processer {
                     (scroll, i.pointer.primary_down(), i.modifiers)
                 });
 
-                let fit_handler = self
-                    .fit_handler
-                    .entry(hist_name.clone())
-                    .or_default();
+                let fit_handler = self.fit_handler.entry(hist_name.clone()).or_default();
 
                 fit_handler.histogram = Some(hist.clone()); // Set the histogram for the fit handler
                 fit_handler.interactive_keybinds(ui); // enable the key binds to add markers and draw the fits
@@ -210,8 +207,7 @@ impl Processer {
                     let plot_min_x = plot_ui.plot_bounds().min()[0];
                     let plot_max_x = plot_ui.plot_bounds().max()[0];
 
-                    if let Some(step_line) =
-                        self.histogrammer.egui_histogram_step(hist_name, color)
+                    if let Some(step_line) = self.histogrammer.egui_histogram_step(hist_name, color)
                     {
                         plot_ui.line(step_line);
 

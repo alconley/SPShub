@@ -1,11 +1,11 @@
 // Conditional compilation
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{
-    plotter::app::PlotterApp, 
-    sps_plot::app::SPSPlotApp,
+    plotter::app::PlotterApp,
     sps_cebra_eventbuilder::app::EVBApp as SPSCeBrAEvbApp,
-    // sps_eventbuilder::app::EVBApp as SPSEvbApp, 
+    // sps_eventbuilder::app::EVBApp as SPSEvbApp,
     // cebra_eventbuilder::app::EVBApp as CeBrAEvbApp,
+    sps_plot::app::SPSPlotApp,
 };
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -26,7 +26,6 @@ pub struct TemplateApp {
     // #[cfg(not(target_arch = "wasm32"))]
     // cebra_evb_app: CeBrAEvbApp,
     // cebra_evb_app_visible: bool,
-
     #[cfg(not(target_arch = "wasm32"))]
     sps_plot_app: SPSPlotApp,
     sps_plot_app_visible: bool,
@@ -36,8 +35,6 @@ pub struct TemplateApp {
     plotter_app_visible: bool,
 }
 
-
-
 impl TemplateApp {
     /// Called once before the first frame.
     /// Creates a new instance of the application, possibly restoring from previous state.
@@ -45,19 +42,18 @@ impl TemplateApp {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let app = Self {
-                sps_cebra_evb_app: SPSCeBrAEvbApp::new(cc), 
+                sps_cebra_evb_app: SPSCeBrAEvbApp::new(cc),
                 sps_cebra_evb_app_visible: false,
 
-                // sps_evb_app: SPSEvbApp::new(cc), 
+                // sps_evb_app: SPSEvbApp::new(cc),
                 // sps_evb_app_visible: false,
 
                 // cebra_evb_app: CeBrAEvbApp::new(cc),
                 // cebra_evb_app_visible: false,
-
-                sps_plot_app: SPSPlotApp::new(cc), 
+                sps_plot_app: SPSPlotApp::new(cc),
                 sps_plot_app_visible: false,
 
-                plotter_app: PlotterApp::new(cc), 
+                plotter_app: PlotterApp::new(cc),
                 plotter_app_visible: false,
             };
 
@@ -107,62 +103,60 @@ impl eframe::App for TemplateApp {
             });
         });
 
-        egui::SidePanel::right("sidebar_panel").resizable(false).show(ctx, |ui| {
-            // ui.heading("Apps");
+        egui::SidePanel::right("sidebar_panel")
+            .resizable(false)
+            .show(ctx, |ui| {
+                // ui.heading("Apps");
 
-            // Set the layout to top-down with centered alignment
-            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                // Set the layout to top-down with centered alignment
+                ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                    let full_width = ui.available_width(); // Get the full available width to make the label span the entire panel
 
-                let full_width = ui.available_width(); // Get the full available width to make the label span the entire panel
+                    ui.heading("Event Builders");
 
-                ui.heading("Event Builders");
+                    if ui
+                        .add_sized(
+                            [full_width, 0.0],
+                            egui::SelectableLabel::new(self.sps_cebra_evb_app_visible, "SPS+CeBrA"),
+                        )
+                        .clicked()
+                    {
+                        self.sps_cebra_evb_app_visible = !self.sps_cebra_evb_app_visible;
+                    }
 
-                if ui
-                    .add_sized(
-                        [full_width, 0.0],
-                        egui::SelectableLabel::new(self.sps_cebra_evb_app_visible, "SPS+CeBrA"),
-                    )
-                    .clicked()
-                {
-                    self.sps_cebra_evb_app_visible = !self.sps_cebra_evb_app_visible;
-                }
+                    ui.separator();
 
+                    ui.heading("SE-SPS Utilities");
 
-                ui.separator();
+                    if ui
+                        .add_sized(
+                            [full_width, 0.0],
+                            egui::SelectableLabel::new(self.sps_plot_app_visible, "SPS Plot"),
+                        )
+                        .clicked()
+                    {
+                        self.sps_plot_app_visible = !self.sps_plot_app_visible;
+                    }
 
-                ui.heading("SE-SPS Utilities");
+                    ui.separator();
 
-                if ui
-                    .add_sized(
-                        [full_width, 0.0],
-                        egui::SelectableLabel::new(self.sps_plot_app_visible, "SPS Plot"),
-                    )
-                    .clicked()
-                {
-                    self.sps_plot_app_visible = !self.sps_plot_app_visible;
-                }
+                    ui.heading("CeBrA Utilities");
 
-                ui.separator();
+                    ui.separator();
 
-                ui.heading("CeBrA Utilities");
+                    ui.heading("General");
 
-                ui.separator();
-
-                ui.heading("General");
-
-                if ui
-                    .add_sized(
-                        [full_width, 0.0],
-                        egui::SelectableLabel::new(self.plotter_app_visible, "Plotter"),
-                    )
-                    .clicked()
-                {
-                    self.plotter_app_visible = !self.plotter_app_visible;
-                }
-
-
+                    if ui
+                        .add_sized(
+                            [full_width, 0.0],
+                            egui::SelectableLabel::new(self.plotter_app_visible, "Plotter"),
+                        )
+                        .clicked()
+                    {
+                        self.plotter_app_visible = !self.plotter_app_visible;
+                    }
+                });
             });
-        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // ui.heading("Tool Box");
@@ -207,8 +201,8 @@ impl eframe::App for TemplateApp {
 
                     // if self.sps_evb_app_visible {
                     //     self.sps_evb_app.update(ctx, frame);
-                    // }                    
-                    
+                    // }
+
                     // if self.cebra_evb_app_visible {
                     //     self.cebra_evb_app.update(ctx, frame);
                     // }

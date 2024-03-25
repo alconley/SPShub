@@ -62,7 +62,7 @@ pub struct GaussianFitter {
     x: Vec<f64>,
     y: Vec<f64>,
     pub peak_markers: Vec<f64>,
-    
+
     #[serde(skip)]
     pub decomposition_fit_line_points: Option<Vec<Vec<PlotPoint>>>,
 }

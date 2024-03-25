@@ -12,7 +12,6 @@ pub struct EguiFitMarkers {
 }
 
 impl EguiFitMarkers {
-    
     /* region functions */
     pub fn add_region_marker(&mut self, x: f64) {
         self.region_markers.push(x);

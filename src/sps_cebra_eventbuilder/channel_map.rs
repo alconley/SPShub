@@ -113,7 +113,6 @@ impl ChannelMap {
         };
         for (board_index, board) in boards.iter().enumerate() {
             for (channel_index, channel) in board.channels.iter().enumerate() {
-                
                 let data = ChannelData {
                     channel_type: *channel,
                 };

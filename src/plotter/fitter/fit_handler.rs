@@ -4,13 +4,13 @@ use egui::Color32;
 
 use rfd::FileDialog;
 
-use std::io::{self, Read};
 use std::fs::File;
+use std::io::{self, Read};
 
 use super::egui_markers::EguiFitMarkers;
 
-use crate::plotter::histoer::histogram1d::Histogram;
 use super::fit::Fit;
+use crate::plotter::histoer::histogram1d::Histogram;
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct FitHandler {
@@ -23,7 +23,6 @@ pub struct FitHandler {
 }
 
 impl FitHandler {
-
     pub fn interactive_keybinds(&mut self, ui: &mut egui::Ui) {
         // remove the closest marker to the cursor and the fit
         if ui.input(|i| i.key_pressed(egui::Key::Minus)) {
@@ -58,10 +57,12 @@ impl FitHandler {
         // buttons that will be displayed in the ui
         ui.horizontal(|ui| {
             // check to see if there is at least 2 region markers
-            if self.markers.region_markers.len() == 2 && ui
+            if self.markers.region_markers.len() == 2
+                && ui
                     .button("Fit")
                     .on_hover_text("Fit the current histogram data. Shortcut: 'F' key")
-                    .clicked() {
+                    .clicked()
+            {
                 self.fit();
             }
 
@@ -113,11 +114,9 @@ impl FitHandler {
                 ui.horizontal(|ui| {
                     // Current Fits
                     ui.vertical(|ui| {
-
                         ui.horizontal(|ui| {
-
                             ui.label("Current Fit");
-                
+
                             if ui.button("Load Fit").clicked() {
                                 if let Err(e) = self.load_temp_fit() {
                                     eprintln!("Failed to save fit: {}", e);
@@ -131,7 +130,6 @@ impl FitHandler {
                                     }
                                 }
                             }
-
                         });
 
                         if let Some(fit) = &mut self.current_fit {
@@ -148,9 +146,8 @@ impl FitHandler {
                         // Display stored fits stats in a vertical layout within the second column
 
                         ui.horizontal(|ui| {
-
                             ui.label("Stored Fits");
-                
+
                             // Add a button for loading the FitHandler state
                             if ui.button("Load Fits").clicked() {
                                 match Self::load_fits_from_file() {
@@ -165,7 +162,6 @@ impl FitHandler {
                                     eprintln!("Failed to save Fit Handler state: {}", e);
                                 }
                             }
-
                         });
 
                         self.stored_fit_stats_labels(ui);
@@ -209,7 +205,6 @@ impl FitHandler {
 
     fn stored_fit_stats_labels(&mut self, ui: &mut egui::Ui) {
         if !self.fits.is_empty() {
-
             egui::ScrollArea::vertical()
                 .id_source("stored_fit_scroll")
                 .show(ui, |ui| {
@@ -224,7 +219,6 @@ impl FitHandler {
                             ui.end_row(); // End the header row
 
                             // Iterate over stored fits to fill in the grid with fit statistics
-
 
                             for (fit_index, fit) in self.fits.iter().enumerate() {
                                 // Assuming each fit has a similar structure to current_fit
@@ -248,7 +242,8 @@ impl FitHandler {
                                             )); // Area
 
                                             if param_index == 0 && ui.button("X").clicked() {
-                                                self.to_remove_index = Some(fit_index); // Mark for removal
+                                                self.to_remove_index = Some(fit_index);
+                                                // Mark for removal
                                             }
 
                                             ui.end_row(); // Move to the next row for the next set of stats
@@ -293,10 +288,11 @@ impl FitHandler {
         if let Some(path) = FileDialog::new()
             .set_title("Save Fit Handler State")
             .add_filter("YAML files", &["yaml"])
-            .save_file() {
-                let file = File::create(path)?;
-                serde_yaml::to_writer(file, &self)
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+            .save_file()
+        {
+            let file = File::create(path)?;
+            serde_yaml::to_writer(file, &self)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
         }
         Ok(())
     }
@@ -305,15 +301,19 @@ impl FitHandler {
         if let Some(path) = FileDialog::new()
             .set_title("Load Fit Handler State")
             .add_filter("YAML files", &["yaml"])
-            .pick_file() {
-                let mut file = File::open(path)?;
-                let mut contents = String::new();
-                file.read_to_string(&mut contents)?;
-                let fit_handler: Self = serde_yaml::from_str(&contents)
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-                return Ok(fit_handler);
+            .pick_file()
+        {
+            let mut file = File::open(path)?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
+            let fit_handler: Self = serde_yaml::from_str(&contents)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+            return Ok(fit_handler);
         }
-        Err(io::Error::new(io::ErrorKind::NotFound, "Failed to load Fit Handler state"))
+        Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "Failed to load Fit Handler state",
+        ))
     }
 
     fn load_temp_fit(&mut self) -> Result<(), io::Error> {
@@ -323,7 +323,10 @@ impl FitHandler {
             self.current_fit = Some(fit);
             Ok(())
         } else {
-            Err(io::Error::new(io::ErrorKind::NotFound, "Failed to load fit"))
+            Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                "Failed to load fit",
+            ))
         }
     }
 }

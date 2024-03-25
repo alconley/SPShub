@@ -36,7 +36,6 @@ struct RunParams<'a> {
 }
 
 fn clean_up_unpack_dir(unpack_dir: &Path) -> Result<(), EVBError> {
-
     for entry in unpack_dir.read_dir()?.flatten() {
         if entry.metadata()?.is_file() {
             std::fs::remove_file(entry.path())?;
@@ -186,7 +185,9 @@ fn process_run(
             &frag_number,
         )?;
     }
-    if let Some(list) = scaler_list { list.write_scalers(&params.scalerout_file_path)? }
+    if let Some(list) = scaler_list {
+        list.write_scalers(&params.scalerout_file_path)?
+    }
 
     //To be safe, manually drop all files in unpack dir before deleting all the files
     drop(files);

@@ -100,7 +100,7 @@ impl CutHandler {
         Ok(())
     }
 
-    /* 
+    /*
     pub fn _filter_files_and_save_separately(
         &mut self,
         file_paths: Vec<PathBuf>,

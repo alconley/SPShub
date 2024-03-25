@@ -143,9 +143,9 @@ impl EVBApp {
                 Ok(result) => {
                     match result {
                         Ok(_) => info!("Finished processing the run"),
-                        Err(x) => error!(
-                            "An error occured while processing the run: {x}. Job stopped."
-                        ),
+                        Err(x) => {
+                            error!("An error occured while processing the run: {x}. Job stopped.")
+                        }
                     };
                 }
                 Err(_) => error!("An error occured in joining the processing thread!"),
@@ -601,7 +601,9 @@ impl App for EVBApp {
                         .add_filter("YAML file", &["yaml"])
                         .pick_file();
 
-                        if let Some(real_path) = result { self.read_params_from_file(&real_path) }
+                    if let Some(real_path) = result {
+                        self.read_params_from_file(&real_path)
+                    }
                 }
                 if ui.button("Save Config...").clicked() {
                     let result = rfd::FileDialog::new()
@@ -611,7 +613,9 @@ impl App for EVBApp {
                         .add_filter("YAML file", &["yaml"])
                         .save_file();
 
-                        if let Some(real_path) = result { self.write_params_to_file(&real_path) }
+                    if let Some(real_path) = result {
+                        self.write_params_to_file(&real_path)
+                    }
                 }
             });
 

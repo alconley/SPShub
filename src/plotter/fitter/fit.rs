@@ -5,8 +5,8 @@ use egui_plot::{Line, PlotPoints};
 
 use rfd::FileDialog;
 
-use std::io::{self, Read};
 use std::fs::File;
+use std::io::{self, Read};
 
 use serde_yaml;
 
@@ -164,7 +164,7 @@ impl Fit {
     ) {
         if let Some(background_fitter) = &self.background {
             background_fitter.draw_background_line(plot_ui);
-            
+
             if let Some(gaussian_fitter) = &self.fit {
                 gaussian_fitter.draw_decomposition_fit_lines(plot_ui, decomposition_color);
 
@@ -191,10 +191,11 @@ impl Fit {
         if let Some(path) = FileDialog::new()
             .set_title("Save Fit")
             .add_filter("YAML files", &["yaml"])
-            .save_file() {
-                let file = File::create(path)?;
-                serde_yaml::to_writer(file, &self)
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+            .save_file()
+        {
+            let file = File::create(path)?;
+            serde_yaml::to_writer(file, &self)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
         }
         Ok(())
     }
@@ -203,19 +204,19 @@ impl Fit {
         if let Some(path) = FileDialog::new()
             .set_title("Open Fit")
             .add_filter("YAML files", &["yaml"])
-            .pick_file() {
-                let mut file = File::open(path)?;
-                let mut contents = String::new();
-                file.read_to_string(&mut contents)?;
-                let fit_handler: Self = serde_yaml::from_str(&contents)
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-                return Ok(fit_handler);
+            .pick_file()
+        {
+            let mut file = File::open(path)?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
+            let fit_handler: Self = serde_yaml::from_str(&contents)
+                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
+            return Ok(fit_handler);
         }
         Err(io::Error::new(io::ErrorKind::NotFound, "No file selected"))
     }
 
     pub fn fit_ui(&mut self, ui: &mut egui::Ui) {
-
         if let Some(gaussian_fitter) = &self.fit {
             if let Some(params) = &gaussian_fitter.fit_params {
                 egui::ScrollArea::vertical()
@@ -235,26 +236,14 @@ impl Fit {
                                 // Iterate over params to fill in the grid with fit statistics
                                 for (index, param) in params.iter().enumerate() {
                                     ui.label(format!("{}", index)); // Fit number
-                                    ui.label(format!(
-                                        "{:.2} ± {:.2}",
-                                        param.mean.0, param.mean.1
-                                    )); // Mean
-                                    ui.label(format!(
-                                        "{:.2} ± {:.2}",
-                                        param.fwhm.0, param.fwhm.1
-                                    )); // FWHM
-                                    ui.label(format!(
-                                        "{:.0} ± {:.0}",
-                                        param.area.0, param.area.1
-                                    )); // Area
+                                    ui.label(format!("{:.2} ± {:.2}", param.mean.0, param.mean.1)); // Mean
+                                    ui.label(format!("{:.2} ± {:.2}", param.fwhm.0, param.fwhm.1)); // FWHM
+                                    ui.label(format!("{:.0} ± {:.0}", param.area.0, param.area.1)); // Area
                                     ui.end_row(); // Move to the next row for the next set of stats
                                 }
-                        });
-                });
+                            });
+                    });
             }
         }
-    
     }
-
 }
-
