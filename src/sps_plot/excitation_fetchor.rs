@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::error::Error;
 
 // use std::sync::mpsc::{self, Receiver, Sender};
-use tokio::runtime::Runtime; // Tokio for async runtime
+use tokio::runtime::Runtime; // Tokio for async runtime... doesnt work on wasm 
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExcitationResponse {

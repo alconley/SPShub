@@ -8,6 +8,8 @@ use crate::{
     sps_plot::app::SPSPlotApp,
 };
 
+use crate::sps_runtime_estimator::app::SPSRunTimeApp;
+
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
@@ -32,6 +34,9 @@ pub struct TemplateApp {
     #[cfg(not(target_arch = "wasm32"))]
     plotter_app: PlotterApp,
     plotter_app_visible: bool,
+
+    sps_runtime_app: SPSRunTimeApp,
+    sps_runtime_app_visible: bool,
 }
 
 impl TemplateApp {
@@ -55,6 +60,9 @@ impl TemplateApp {
 
                 plotter_app: PlotterApp::new(cc),
                 plotter_app_visible: false,
+
+                sps_runtime_app: SPSRunTimeApp::new(cc),
+                sps_runtime_app_visible: false,
             };
 
             // Attempt to restore the app state from persistent storage, if available.
@@ -161,6 +169,16 @@ impl eframe::App for TemplateApp {
                         self.sps_plot_app_visible = !self.sps_plot_app_visible;
                     }
 
+                    if ui
+                        .add_sized(
+                            [full_width, 0.0],
+                            egui::SelectableLabel::new(self.sps_runtime_app_visible, "Run Time Estimator"),
+                        )
+                        .clicked()
+                    {
+                        self.sps_runtime_app_visible = !self.sps_runtime_app_visible;
+                    }
+
                     ui.separator();
 
                     ui.heading("CeBrA Utilities");
@@ -178,6 +196,8 @@ impl eframe::App for TemplateApp {
                     {
                         self.plotter_app_visible = !self.plotter_app_visible;
                     }
+
+
                 });
             });
 
@@ -232,6 +252,10 @@ impl eframe::App for TemplateApp {
                         ui.label("Will be available soon. Hopefully lol");
                     });
                 }
+
+                if self.sps_runtime_app_visible {
+                    self.sps_runtime_app.update(ctx, frame);
+                }
             } else {
                 // Update calls for non-web targets are grouped to avoid repetitive conditional checks.
                 #[cfg(not(target_arch = "wasm32"))]
@@ -254,6 +278,11 @@ impl eframe::App for TemplateApp {
 
                     if self.plotter_app_visible {
                         self.plotter_app.update(ctx, frame);
+                    }
+
+
+                    if self.sps_runtime_app_visible {
+                        self.sps_runtime_app.update(ctx, frame);
                     }
                 }
             }
