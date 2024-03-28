@@ -9,6 +9,7 @@ use crate::{
 };
 
 use crate::sps_runtime_estimator::app::SPSRunTimeApp;
+use crate::cebra_calibration::app::CeBrAEfficiencyApp;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -37,6 +38,9 @@ pub struct TemplateApp {
 
     sps_runtime_app: SPSRunTimeApp,
     sps_runtime_app_visible: bool,
+
+    cebra_efficiency_app: CeBrAEfficiencyApp,
+    cebra_efficiency_app_visible: bool,
 }
 
 impl TemplateApp {
@@ -63,6 +67,9 @@ impl TemplateApp {
 
                 sps_runtime_app: SPSRunTimeApp::new(cc),
                 sps_runtime_app_visible: false,
+
+                cebra_efficiency_app: CeBrAEfficiencyApp::new(cc),
+                cebra_efficiency_app_visible: false,
             };
 
             // Attempt to restore the app state from persistent storage, if available.
@@ -183,6 +190,16 @@ impl eframe::App for TemplateApp {
 
                     ui.heading("CeBrA Utilities");
 
+                    if ui
+                        .add_sized(
+                            [full_width, 0.0],
+                            egui::SelectableLabel::new(self.cebra_efficiency_app_visible, "CeBrA Calibration"),
+                        )
+                        .clicked()
+                    {
+                        self.cebra_efficiency_app_visible = !self.cebra_efficiency_app_visible;
+                    }
+
                     ui.separator();
 
                     ui.heading("General");
@@ -280,9 +297,12 @@ impl eframe::App for TemplateApp {
                         self.plotter_app.update(ctx, frame);
                     }
 
-
                     if self.sps_runtime_app_visible {
                         self.sps_runtime_app.update(ctx, frame);
+                    }
+
+                    if self.cebra_efficiency_app_visible {
+                        self.cebra_efficiency_app.update(ctx, frame);
                     }
                 }
             }
