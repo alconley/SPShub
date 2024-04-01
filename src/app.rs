@@ -9,7 +9,7 @@ use crate::{
 };
 
 use crate::sps_runtime_estimator::app::SPSRunTimeApp;
-use crate::cebra_calibration::app::CeBrAEfficiencyApp;
+use crate::cebra_efficiency::app::CeBrAEfficiencyApp;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -193,7 +193,7 @@ impl eframe::App for TemplateApp {
                     if ui
                         .add_sized(
                             [full_width, 0.0],
-                            egui::SelectableLabel::new(self.cebra_efficiency_app_visible, "CeBrA Calibration"),
+                            egui::SelectableLabel::new(self.cebra_efficiency_app_visible, "Efficiency"),
                         )
                         .clicked()
                     {

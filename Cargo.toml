@@ -7,9 +7,9 @@ rust-version = "1.77"
 
 
 [dependencies]
-egui = "0.27"
-egui_plot = {version = "0.27", features = ["serde"] }
-eframe = { version = "0.27", default-features = false, features = [
+egui = "0.27.1"
+egui_plot = {version = "0.27.1", features = ["serde"] }
+eframe = { version = "0.27.1", default-features = false, features = [
     "default_fonts", # Embed the default egui fonts.
     "glow",          # Use the glow rendering backend. Alternative: "wgpu".
     "persistence",   # Enable restoring app state when restarting the app.
@@ -18,7 +18,7 @@ eframe = { version = "0.27", default-features = false, features = [
 log = "0.4"
 
 # CeBrA Efficiency app
-egui_extras = { version = "0.27", features = ["datepicker"]}
+egui_extras = { version = "0.27.1", features = ["datepicker"]}
 chrono = { version = "0.4", features = ["serde"] }
 
 # You only need serde if you want app persistence:
