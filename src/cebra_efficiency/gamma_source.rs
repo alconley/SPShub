@@ -55,7 +55,7 @@ impl GammaSource {
     }
 
     pub fn source_ui(&mut self, ui: &mut egui::Ui) {
-        ui.collapsing(format!("{}", self.name), |ui| {
+        ui.collapsing("Source", |ui| {
             egui::Grid::new("source_ui")
                 .striped(true)
                 .min_col_width(50.0)
@@ -92,7 +92,7 @@ impl GammaSource {
                         egui::DragValue::new(&mut self.source_activity_calibration.activity)
                             .speed(1.0)
                             .clamp_range(0.0..=f64::INFINITY)
-                            .suffix(" Bq"),
+                            .suffix(" kBq"),
                     );
 
                     ui.end_row();
@@ -128,7 +128,7 @@ impl GammaSource {
                     ui.label("Activity:");
 
                     ui.label(&format!(
-                        "{:.0} kBq",
+                        "{:.0} Bq",
                         self.source_activity_measurement.activity
                     ));
 
@@ -170,35 +170,6 @@ impl GammaSource {
             });
 
             ui.separator();
-
-            // // Adding a UI section for managing detectors
-            // if ui.button("Add Detector").clicked() {
-            //     self.detectors.push(Detector::default());
-            // }
-
-            // for (detector_index, detector) in self.detectors.iter_mut().enumerate() {
-            //     ui.label("Counts & Uncertainty per Gamma Line:");
-            //     if ui.button("Remove Detector").clicked() {
-            //         self.detectors.remove(detector_index);
-            //         return; // Early return to prevent use after remove
-            //     }
-
-            //     // Ensure detector has the correct number of entries for counts and uncertainties
-            //     if detector.counts.len() != self.gamma_lines.len() {
-            //         detector.counts.resize(self.gamma_lines.len(), 0.0);
-            //         detector.count_uncertainty.resize(self.gamma_lines.len(), 0.0);
-            //     }
-
-            //     for (line_index, gamma_line) in self.gamma_lines.iter().enumerate() {
-            //         ui.horizontal(|ui| {
-            //             ui.label(format!("Line {}: {:.1} keV", line_index + 1, gamma_line.energy));
-            //             ui.add(egui::DragValue::new(&mut detector.counts[line_index]).speed(0.1));
-            //             ui.label("±");
-            //             ui.add(egui::DragValue::new(&mut detector.count_uncertainty[line_index]).speed(0.01));
-            //         });
-            //     }
-            // }
-
     }
 
     // Modify other methods to work with the new gamma_lines structure

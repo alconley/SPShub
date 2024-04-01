@@ -3,6 +3,7 @@ use eframe::App;
 
 use rfd::FileDialog;
 use serde_yaml;
+
 use std::fs::File;
 use std::io::{Read, Write};
 
@@ -12,20 +13,17 @@ use super::gamma_source::GammaSource;
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct CeBrAEfficiencyApp {
-    gamma_sources: Vec<GammaSource>,
     measurements: Vec<Measurement>,
 }
 
 impl CeBrAEfficiencyApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self {
-            gamma_sources: vec![],
             measurements: vec![],
         }
     }
 
-
-    fn add_fsu_152eu_source(&mut self) {
+    fn get_fsu_152eu_source(&mut self) -> GammaSource {
 
         let mut gamma_source = GammaSource::new();
         gamma_source.name = "152Eu".to_string();
@@ -46,10 +44,10 @@ impl CeBrAEfficiencyApp {
         gamma_source.add_gamma_line(1112.076, 13.67, 0.08);
         gamma_source.add_gamma_line(1408.0130, 20.87, 0.09);
 
-        self.gamma_sources.push(gamma_source);
+        gamma_source
     }
 
-    fn add_fsu_56co_source(&mut self) {
+    fn get_fsu_56co_source(&mut self) -> GammaSource {
 
         let mut gamma_source = GammaSource::new();
         gamma_source.name = "56Co".to_string();
@@ -66,11 +64,11 @@ impl CeBrAEfficiencyApp {
         gamma_source.add_gamma_line(2598.438, 16.96, 0.04);
         gamma_source.add_gamma_line(3451.119, 0.942, 0.006);
 
-        self.gamma_sources.push(gamma_source);
+        gamma_source
     }
 
-    fn remove_gamma_source(&mut self, index: usize) {
-        self.gamma_sources.remove(index);
+    fn remove_measurement(&mut self, index: usize) {
+        self.measurements.remove(index);
     }
 
     fn save_to_file(&self) {
@@ -137,36 +135,20 @@ impl App for CeBrAEfficiencyApp {
             ui.horizontal(| ui| {
                 ui.label("FSU's Current Sources:");
 
-                // For "152Eu"
-                let eu_source_index = self.gamma_sources.iter().position(|s| s.name == "152Eu");
-                let eu_source_added = eu_source_index.is_some();
-                if ui.selectable_label(eu_source_added, "152Eu").clicked() {
-                    if let Some(index) = eu_source_index {
-                        // Remove if it was already added
-                        self.remove_gamma_source(index);
-                    } else {
-                        // Add if it was not added
-                        self.add_fsu_152eu_source();
-                    }
+                if ui.button("152Eu").clicked() {
+                    let eu152 = self.get_fsu_152eu_source();
+                    self.measurements.push(Measurement::new(Some(eu152)));
                 }
 
-                // For "56Co"
-                let co_source_index = self.gamma_sources.iter().position(|s| s.name == "56Co");
-                let co_source_added = co_source_index.is_some();
-                if ui.selectable_label(co_source_added, "56Co").clicked() {
-                    if let Some(index) = co_source_index {
-                        // Remove if it was already added
-                        self.remove_gamma_source(index);
-                    } else {
-                        // Add if it was not added
-                        self.add_fsu_56co_source();
-                    }
+                if ui.button("56Co").clicked() {
+                    let co56 = self.get_fsu_56co_source();
+                    self.measurements.push(Measurement::new(Some(co56)));
                 }
 
                 ui.separator();
 
-                if ui.button("Add New γ Source").clicked() {
-                    self.gamma_sources.push(GammaSource::new());
+                if ui.button("New").clicked() {
+                    self.measurements.push(Measurement::new(None));
                 }
 
                 ui.separator();
@@ -179,33 +161,18 @@ impl App for CeBrAEfficiencyApp {
 
             ui.label("Sources");
             egui::ScrollArea::vertical().show(ui, |ui| {
-                for (index, gamma_source) in self.gamma_sources.iter_mut().enumerate() {
+                for (index, measurement) in self.measurements.iter_mut().enumerate() {
+                    
+                    measurement.update_ui(ui);
 
-                    gamma_source.source_ui(ui);
-
-                    // // add measurements button
-                    // if ui.button("Add Measurement").clicked() {
-                    //     self.measurements.push(Measurement::new(gamma_source.clone()));
-                    // }
-
-                    if gamma_source.name == "152Eu" || gamma_source.name == "56Co" {
-                        continue;
-                    } else {
-                        if ui.button("Remove").clicked() {
-                            index_to_remove = Some(index);
-                        }
+                    if ui.button("Remove").clicked() {
+                        index_to_remove = Some(index);
                     }
-
-
 
                 }
 
-                // for measurement in &mut self.measurements {
-                //     measurement.update_ui(ui);
-                // }
-
                 if let Some(index) = index_to_remove {
-                    self.remove_gamma_source(index);
+                    self.remove_measurement(index);
                 }
             });
         });
