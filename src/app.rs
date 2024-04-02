@@ -273,6 +273,10 @@ impl eframe::App for TemplateApp {
                 if self.sps_runtime_app_visible {
                     self.sps_runtime_app.update(ctx, frame);
                 }
+
+                if self.cebra_efficiency_app_visible {
+                    self.cebra_efficiency_app.update(ctx, frame);
+                }
             } else {
                 // Update calls for non-web targets are grouped to avoid repetitive conditional checks.
                 #[cfg(not(target_arch = "wasm32"))]

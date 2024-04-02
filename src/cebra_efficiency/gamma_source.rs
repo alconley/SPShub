@@ -1,5 +1,6 @@
 
 use super::gamma_line::GammaLine;
+use super::detector::DetectorLine;
 
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
 pub struct SourceActivity {
@@ -52,6 +53,24 @@ impl GammaSource {
         let activity = source_activity_bq * (-decay_constant * time_difference).exp();
 
         self.source_activity_measurement.activity = activity;
+    }
+
+    pub fn gamma_line_efficiency_from_source_measurement(&self, line: &mut DetectorLine) {
+
+        let source_activity = self.source_activity_measurement.activity;
+        let activity_uncertainty = source_activity * 0.05; // 5% uncertainty in activity
+
+        let run_time = self.measurement_time * 3600.0; // convert hours to seconds
+        let intensity = line.intensity;
+        let intensity_uncertainty = line.intensity_uncertainty;
+        let counts = line.count;
+        let count_uncertainity = line.uncertainty;
+
+        let efficiency = counts / (intensity * source_activity * run_time * 0.01) * 100.0; // efficiency in percent
+        let efficiency_uncertainty = efficiency * ( (count_uncertainity / counts).powi(2) + (intensity_uncertainty / intensity).powi(2) + (activity_uncertainty / source_activity).powi(2) ).sqrt();
+
+        line.efficiency = efficiency; 
+        line.efficiency_uncertainty = efficiency_uncertainty;
     }
 
     pub fn source_ui(&mut self, ui: &mut egui::Ui) {

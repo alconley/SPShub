@@ -1,7 +1,6 @@
 use eframe::egui::{self};
 use eframe::App;
 
-use rfd::FileDialog;
 use serde_yaml;
 
 use std::fs::File;
@@ -71,26 +70,9 @@ impl CeBrAEfficiencyApp {
         self.measurements.remove(index);
     }
 
-    fn save_to_file(&self) {
-        if let Some(path) = FileDialog::new()
-            .set_title("Save As")
-            .add_filter("YAML", &["yaml", "yml"])
-            .save_file() 
-        {
-            match File::create(path) {
-                Ok(mut file) => {
-                    let data = serde_yaml::to_string(self).expect("Failed to serialize data.");
-                    file.write_all(data.as_bytes()).expect("Failed to write data to file.");
-                }
-                Err(e) => {
-                    eprintln!("Failed to save file: {}", e);
-                }
-            }
-        }
-    }
-
+    #[cfg(not(target_arch = "wasm32"))]
     fn load_from_file() -> Self {
-        if let Some(path) = FileDialog::new()
+        if let Some(path) = rfd::FileDialog::new()
             .set_title("Open")
             .add_filter("YAML", &["yaml", "yml"])
             .pick_file() 
@@ -111,6 +93,47 @@ impl CeBrAEfficiencyApp {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_to_file(&self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .set_title("Save As")
+            .add_filter("YAML", &["yaml", "yml"])
+            .save_file() 
+        {
+            match File::create(path) {
+                Ok(mut file) => {
+                    let data = serde_yaml::to_string(self).expect("Failed to serialize data.");
+                    file.write_all(data.as_bytes()).expect("Failed to write data to file.");
+                }
+                Err(e) => {
+                    eprintln!("Failed to save file: {}", e);
+                }
+            }
+        }
+    }
+
+    fn egui_save_and_load_file(&mut self, ui: &mut egui::Ui) {
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if ui.button("Save").clicked() {
+                self.save_to_file();
+                ui.close_menu();
+            }
+
+            if ui.button("Load").clicked() {
+                *self = Self::load_from_file();
+            }
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            // inplement save/load for web
+
+        }
+
+    }
+
 }
 
 impl App for CeBrAEfficiencyApp {
@@ -120,14 +143,7 @@ impl App for CeBrAEfficiencyApp {
             egui::TopBottomPanel::top("cebra_efficiency_top_panel").show_inside(ui, |ui| {
                 egui::menu::bar(ui, |ui| {
                     ui.menu_button("File", |ui| {
-                        if ui.button("Save").clicked() {
-                            self.save_to_file();
-                            ui.close_menu();
-                        }
-                        if ui.button("Load").clicked() {
-                            *self = Self::load_from_file();
-                            ui.close_menu();
-                        }
+                        self.egui_save_and_load_file(ui);
                     });
                 });
             });

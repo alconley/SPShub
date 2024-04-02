@@ -4,13 +4,19 @@ use super::gamma_source::GammaSource;
 pub struct DetectorLine {
     pub count: f64,
     pub uncertainty: f64,
-    pub gamma_line_energy: f64,
+    pub energy: f64,
+    pub intensity: f64,
+    pub intensity_uncertainty: f64,
+    pub efficiency: f64,
+    pub efficiency_uncertainty: f64,
 }
 
 impl DetectorLine {
     fn ui(&mut self, ui: &mut egui::Ui) {
         ui.add(egui::DragValue::new(&mut self.count).speed(1.0).clamp_range(0.0..=f64::INFINITY));
         ui.add(egui::DragValue::new(&mut self.uncertainty).speed(1.0).clamp_range(0.0..=f64::INFINITY));
+
+        ui.label( format!("{:.2} ± {:.2}%", self.efficiency, self.efficiency_uncertainty) );
     }
 }
 
@@ -44,11 +50,13 @@ impl Detector {
                     let mut index_to_remove = None;
                     for (index, line) in self.lines.iter_mut().enumerate() {
                         egui::ComboBox::from_id_source(format!("Line {}", index))
-                            .selected_text(format!("{:.1} keV", line.gamma_line_energy))
+                            .selected_text(format!("{:.1} keV", line.energy))
                             .show_ui(ui, |ui| {
                                 for (gamma_index, gamma_line_str) in gamma_lines.iter().enumerate() {
-                                    if ui.selectable_label(line.gamma_line_energy == gamma_source.gamma_lines[gamma_index].energy, gamma_line_str).clicked() {
-                                        line.gamma_line_energy = gamma_source.gamma_lines[gamma_index].energy;
+                                    if ui.selectable_label(line.energy == gamma_source.gamma_lines[gamma_index].energy, gamma_line_str).clicked() {
+                                        line.energy = gamma_source.gamma_lines[gamma_index].energy;
+                                        line.intensity = gamma_source.gamma_lines[gamma_index].intensity;
+                                        line.intensity_uncertainty = gamma_source.gamma_lines[gamma_index].intensity_uncertainty;
                                     }
                                 }
                             });
@@ -69,6 +77,10 @@ impl Detector {
 
             if ui.button("+").clicked() {
                 self.lines.push(DetectorLine::default());
+            }
+
+            for line in &mut self.lines {
+                gamma_source.gamma_line_efficiency_from_source_measurement(line);
             }
 
         });
@@ -96,6 +108,8 @@ impl Measurement {
             detectors: vec![],
         }
     }
+
+
 
     pub fn measurement_ui(&mut self, ui: &mut egui::Ui) {
 
