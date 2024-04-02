@@ -9,10 +9,8 @@ pub struct DetectorLine {
 
 impl DetectorLine {
     fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.add(egui::DragValue::new(&mut self.count).speed(1.0).clamp_range(0.0..=f64::INFINITY));
-            ui.add(egui::DragValue::new(&mut self.uncertainty).speed(1.0).clamp_range(0.0..=f64::INFINITY));
-        });
+        ui.add(egui::DragValue::new(&mut self.count).speed(1.0).clamp_range(0.0..=f64::INFINITY));
+        ui.add(egui::DragValue::new(&mut self.uncertainty).speed(1.0).clamp_range(0.0..=f64::INFINITY));
     }
 }
 
@@ -20,53 +18,66 @@ impl DetectorLine {
 pub struct Detector {
     pub name: String,
     pub lines: Vec<DetectorLine>,
-    pub available_gamma_lines: Vec<String>,
 }
 
 impl Detector {
     pub fn ui(&mut self, ui: &mut egui::Ui, gamma_source: &GammaSource) {
+
         ui.horizontal(|ui| {
             ui.label("Detector Name:");
             ui.text_edit_singleline(&mut self.name);
         });
-        ui.separator();
 
-        // Placeholder for user's gamma line selection
-        let mut selected_gamma_line_energy = 0.0; // Default to the first gamma line's energy if applicable
+        ui.collapsing(format!("{}", self.name), |ui| {
 
-        // Combo Box for selecting a gamma line
-        egui::ComboBox::from_label("Select Gamma Line")
-            .selected_text(format!("{:.1} keV", selected_gamma_line_energy))
-            .show_ui(ui, |ui| {
-                for gamma_line in &gamma_source.gamma_lines {
-                    let line_text = format!("{:.1} keV", gamma_line.energy);
-                    if ui.selectable_label(selected_gamma_line_energy == gamma_line.energy, line_text).clicked() {
-                        selected_gamma_line_energy = gamma_line.energy;
+            let gamma_lines = gamma_source.gamma_lines.iter().map(|line| format!("{:.1} keV", line.energy)).collect::<Vec<_>>();
+
+            egui::Grid::new("detector_grid")
+                .striped(false)
+                .num_columns(4)
+                .show(ui, |ui| {
+                    ui.label("Energy");
+                    ui.label("Counts");
+                    ui.label("Uncertainty");
+                    ui.end_row();
+
+                    let mut index_to_remove = None;
+                    for (index, line) in self.lines.iter_mut().enumerate() {
+                        egui::ComboBox::from_id_source(format!("Line {}", index))
+                            .selected_text(format!("{:.1} keV", line.gamma_line_energy))
+                            .show_ui(ui, |ui| {
+                                for (gamma_index, gamma_line_str) in gamma_lines.iter().enumerate() {
+                                    if ui.selectable_label(line.gamma_line_energy == gamma_source.gamma_lines[gamma_index].energy, gamma_line_str).clicked() {
+                                        line.gamma_line_energy = gamma_source.gamma_lines[gamma_index].energy;
+                                    }
+                                }
+                            });
+        
+                        line.ui(ui);
+        
+                        if ui.button("X").clicked() {
+                            index_to_remove = Some(index);
+                        }
+        
+                        ui.end_row();
                     }
-                }
-            });
 
-        // Button to add a new DetectorLine with the selected gamma line's energy
-        if ui.button("Add Detector Line").clicked() {
-            self.lines.push(DetectorLine {
-                count: 0.0,
-                uncertainty: 0.0,
-                gamma_line_energy: selected_gamma_line_energy,
-            });
-        }
+                    if let Some(index) = index_to_remove {
+                        self.remove_line(index);
+                    }
+                });
 
-        // Display each DetectorLine's UI
-        for (index, line) in self.lines.iter_mut().enumerate() {
-            ui.horizontal(|ui| {
-                ui.label(format!("Line {}", index + 1));
-                line.ui(ui);
-                if ui.button(format!("Remove {}", index + 1)).clicked() {
-                    // Logic to mark this line for removal; actual removal happens after the loop
-                }
-            });
-        }
+            if ui.button("+").clicked() {
+                self.lines.push(DetectorLine::default());
+            }
 
-        // Logic to remove marked lines, if any (not shown here due to Rust's borrowing rules)
+        });
+
+
+    }
+
+    fn remove_line(&mut self, index: usize) {
+        self.lines.remove(index);
     }
 }
 
@@ -101,52 +112,22 @@ impl Measurement {
                 self.detectors.push(Detector::default());
             }
 
-            // Displaying each detector for naming
-            for detector in &mut self.detectors {
+            let mut index_to_remove = None;
+
+            for (index, detector) in &mut self.detectors.iter_mut().enumerate() {
                 detector.ui(ui, &self.gamma_source);
+
+                if ui.button("Remove Detector").clicked() {
+                    index_to_remove = Some(index);
+                }
+            }
+
+            if let Some(index) = index_to_remove {
+                self.detectors.remove(index);
             }
 
             ui.separator();
 
-            // egui::ScrollArea::vertical().show(ui, |ui| {
-            //     egui::Grid::new("detector_measurement_grid")
-            //         .striped(true)
-            //         .show(ui, |ui| {
-
-            //             // ui.label(format!("Source: {}", self.gamma_source.name));
-            //             // for i in 0..self.detectors.len() {
-            //             //     ui.label(format!("{}", self.detectors[i].name));
-            //             // }
-            //             // ui.end_row();
-
-            //             ui.label("Energy (keV)");
-            //             for _i in 0..self.detectors.len() {
-            //                 ui.label("Counts/±");
-            //             }
-            //             ui.end_row();
-            
-            //             for detector in &mut self.detectors {
-
-            //                 // Combo Box for selecting a gamma line
-            //                 let gamma_line_choices = self.gamma_source.gamma_lines.iter().map(|line| format!("{:.1} keV", line.energy)).collect::<Vec<_>>();
-            //                 if !gamma_line_choices.is_empty() {
-            //                     egui::ComboBox::from_label("")
-            //                         .selected_text(gamma_line_choices[detector.selected_gamma_line_index].clone())
-            //                         .show_ui(ui, |ui| {
-            //                             for (index, choice) in gamma_line_choices.iter().enumerate() {
-            //                                 ui.selectable_value(&mut detector.selected_gamma_line_index, index, choice);
-            //                             }
-            //                         });
-            //                 } else {
-            //                     ui.label("No gamma lines added to source");
-            //                 }
-
-                    
-            //             }
-                        
-            //             ui.end_row();
-            //         });
-            //     });
         });
             
     }

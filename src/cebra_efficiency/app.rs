@@ -165,7 +165,7 @@ impl App for CeBrAEfficiencyApp {
                     
                     measurement.update_ui(ui);
 
-                    if ui.button("Remove").clicked() {
+                    if ui.button("Remove Source").clicked() {
                         index_to_remove = Some(index);
                     }
 
