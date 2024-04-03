@@ -1,5 +1,7 @@
-use eframe::egui::{self};
+use eframe::egui::{self, Color32};
 use eframe::App;
+
+use egui_plot::{Plot, Points, PlotPoints, MarkerShape, Legend};
 
 use serde_yaml;
 
@@ -20,6 +22,61 @@ impl CeBrAEfficiencyApp {
         Self {
             measurements: vec![],
         }
+    }
+
+    fn plot(&mut self, ui: &mut egui::Ui) {
+        let plot = Plot::new("Efficiency")
+            .legend(Legend::default())
+            .min_size(egui::Vec2::new(400.0, 400.0));
+
+        let shapes = [
+            MarkerShape::Cross,
+            MarkerShape::Plus,
+            MarkerShape::Asterisk,
+            MarkerShape::Square,
+            MarkerShape::Circle,
+            MarkerShape::Diamond,
+        ];
+
+        let colors = [
+            Color32::from_rgb(0, 204,0), // green 
+            Color32::from_rgb(102, 0, 204), // purple
+            Color32::from_rgb(204,0,0), // red
+            Color32::from_rgb(0, 102, 204), // blue 
+            Color32::from_rgb(204, 0, 204), // pink
+            Color32::from_rgb(204, 102,0), // orange
+            Color32::from_rgb(204, 204,0), // yellow
+            Color32::from_rgb(204, 0, 102), // more pink 
+        ];
+
+        plot.show(ui, |plot_ui| {
+
+            for (measurement_index, measurement) in self.measurements.iter_mut().enumerate() {
+                let shape = shapes[measurement_index % shapes.len()];
+
+                for (detector_index, detector) in measurement.detectors.iter_mut().enumerate() {
+                    let color = colors[detector_index % colors.len()];
+                    let name = format!("{}: {}", detector.name, measurement.gamma_source.name);
+
+                    let mut points: Vec<[f64;2]> = vec![];            
+                    for detector_line in &detector.lines {
+                        points.push([detector_line.energy, detector_line.efficiency]); 
+                    }
+
+                    let detector_plot_points = PlotPoints::new(points);
+                    
+                    let detector_points = Points::new(detector_plot_points)
+                        .filled(true)
+                        .color(color)
+                        .shape(shape)
+                        .radius(6.0)
+                        .name(name.to_string());
+
+                    plot_ui.points(detector_points);
+
+                }
+            }
+        });
     }
 
     fn get_fsu_152eu_source(&mut self) -> GammaSource {
@@ -148,50 +205,61 @@ impl App for CeBrAEfficiencyApp {
                 });
             });
 
-            ui.horizontal(| ui| {
-                ui.label("FSU's Current Sources:");
+            egui::SidePanel::left("cebra_efficiency_left_side_panel").show_inside(ui, |ui| {
 
-                if ui.button("152Eu").clicked() {
-                    let eu152 = self.get_fsu_152eu_source();
-                    self.measurements.push(Measurement::new(Some(eu152)));
-                }
-
-                if ui.button("56Co").clicked() {
-                    let co56 = self.get_fsu_56co_source();
-                    self.measurements.push(Measurement::new(Some(co56)));
-                }
-
-                ui.separator();
-
-                if ui.button("New").clicked() {
-                    self.measurements.push(Measurement::new(None));
-                }
-
-                ui.separator();
-
-            });
-
-            ui.separator();
-            
-            let mut index_to_remove: Option<usize> = None;
-
-            ui.label("Sources");
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                for (index, measurement) in self.measurements.iter_mut().enumerate() {
-                    
-                    measurement.update_ui(ui);
-
-                    if ui.button("Remove Source").clicked() {
-                        index_to_remove = Some(index);
+                ui.horizontal(| ui| {
+                    ui.label("FSU's Current Sources:");
+    
+                    if ui.button("152Eu").clicked() {
+                        let eu152 = self.get_fsu_152eu_source();
+                        self.measurements.push(Measurement::new(Some(eu152)));
                     }
+    
+                    if ui.button("56Co").clicked() {
+                        let co56 = self.get_fsu_56co_source();
+                        self.measurements.push(Measurement::new(Some(co56)));
+                    }
+    
+                    ui.separator();
+    
+                    if ui.button("New").clicked() {
+                        self.measurements.push(Measurement::new(None));
+                    }
+    
+                    ui.separator();
+    
+                });
+    
+                ui.separator();
+                
+                let mut index_to_remove: Option<usize> = None;
+    
+                ui.label("Sources");
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for (index, measurement) in self.measurements.iter_mut().enumerate() {
+                        
+                        measurement.update_ui(ui);
+    
+                        if ui.button("Remove Source").clicked() {
+                            index_to_remove = Some(index);
+                        }
 
-                }
-
-                if let Some(index) = index_to_remove {
-                    self.remove_measurement(index);
-                }
+                        ui.separator();
+    
+                    }
+    
+                    if let Some(index) = index_to_remove {
+                        self.remove_measurement(index);
+                    }
+                });
+           
             });
+
+
+            self.plot(ui);
+
         });
+           
     }
 }
 

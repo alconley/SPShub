@@ -121,19 +121,22 @@ impl Measurement {
                 return;
             }
 
-            // Section for adding and naming detectors
-            if ui.button("Add Detector").clicked() {
-                self.detectors.push(Detector::default());
-            }
-
             let mut index_to_remove = None;
 
             for (index, detector) in &mut self.detectors.iter_mut().enumerate() {
+
                 detector.ui(ui, &self.gamma_source);
 
                 if ui.button("Remove Detector").clicked() {
                     index_to_remove = Some(index);
                 }
+
+            }
+
+            ui.separator();
+
+            if ui.button("Add Detector").clicked() {
+                self.detectors.push(Detector::default());
             }
 
             if let Some(index) = index_to_remove {
@@ -155,6 +158,5 @@ impl Measurement {
 
         });
     }
-
 
 }
