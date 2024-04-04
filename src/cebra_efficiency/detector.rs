@@ -1,6 +1,7 @@
 use super::exp_fitter::ExpFitter;
 use super::gamma_source::GammaSource;
 
+
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
 pub struct DetectorLine {
     pub count: f64,
@@ -37,6 +38,7 @@ pub struct Detector {
     pub name: String,
     pub lines: Vec<DetectorLine>,
     pub exp_fit: Option<ExpFitter>,
+
 }
 
 impl Detector {
@@ -122,7 +124,10 @@ impl Detector {
                     .map(|line| 1.0 / line.efficiency_uncertainty)
                     .collect::<Vec<_>>();
 
-                self.exp_fit = Some(ExpFitter::new(x_data, y_data, weights));
+                if self.exp_fit.is_none() {
+                    self.exp_fit = Some(ExpFitter::new(x_data, y_data, weights));
+                }
+                // self.exp_fit = Some(ExpFitter::new(x_data, y_data, weights));
 
                 if let Some(exp_fit) = &mut self.exp_fit {
                     exp_fit.fit_ui(ui);
@@ -139,6 +144,8 @@ impl Detector {
     fn remove_line(&mut self, index: usize) {
         self.lines.remove(index);
     }
+
+
 }
 
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]

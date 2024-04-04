@@ -71,6 +71,11 @@ impl CeBrAEfficiencyApp {
                         .name(name.to_string());
 
                     plot_ui.points(detector_points);
+
+                    // check to see if exp_fit in detector is some and then call the draw line function
+                    if let Some(exp_fit) = &mut detector.exp_fit {
+                        exp_fit.draw_fit_line(plot_ui, color);
+                    }
                 }
             }
         });
