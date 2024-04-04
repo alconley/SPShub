@@ -156,11 +156,13 @@ jobs:
       name: Install glib-2.0 development files
       run: sudo apt-get update && sudo apt-get install -y libglib2.0-dev
 
-    # Set PKG_CONFIG_PATH to locate glib-2.0.pc using environment files
+    # Find the path to glib-2.0.pc and set PKG_CONFIG_PATH accordingly
     - if: matrix.os == 'ubuntu-latest'
       name: Set PKG_CONFIG_PATH
-      run: echo "PKG_CONFIG_PATH=$(pkg-config --variable pc_path pkg-config)" 
-      
+      run: |
+        export PKG_CONFIG_PATH=$(dirname $(pkg-config --path glib-2.0.pc))
+        echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        
     - uses: actions-rs/toolchain@v1.0.1
       with:
         toolchain: stable

@@ -36,8 +36,46 @@ impl ExpFitter {
         let initial_guess: Vec<f64> = vec![100.0];
 
         let mut builder_proxy = SeparableModelBuilder::<f64>::new(parameter_names)
-            .initial_parameters(initial_guess);
+            .initial_parameters(initial_guess)
+            .independent_variable(x_data)
+            .function(&["b"], Self::exponential)
+            .partial_deriv("b", Self::exponential_pd_b);
 
+        let model = builder_proxy.build().unwrap();
 
+        let problem = LevMarProblemBuilder::new(model)
+            .observations(y_data)
+            .weights(weights)
+            .build()
+            .unwrap();
+
+        if let Ok((fit_result, fit_statistics)) =
+            LevMarSolver::default().fit_with_statistics(problem)
+        {
+            log::info!(
+                "Nonlinear Parameters: {:?}",
+                fit_result.nonlinear_parameters()
+            );
+            log::info!(
+                "nonlinear parameters variance: {:?}",
+                fit_statistics.nonlinear_parameters_variance()
+            );
+
+            log::info!(
+                "Linear Coefficients: {:?}",
+                fit_result.linear_coefficients().unwrap()
+            );
+            log::info!(
+                "linear coefficients variance: {:?}",
+                fit_statistics.linear_coefficients_variance()
+            );
+
+            let nonlinear_parameters = fit_result.nonlinear_parameters();
+            let nonlinear_variances = fit_statistics.nonlinear_parameters_variance();
+
+            let linear_coefficients = fit_result.linear_coefficients().unwrap();
+            let linear_variances = fit_statistics.linear_coefficients_variance();
+
+        }
     }
 }
