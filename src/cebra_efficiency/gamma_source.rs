@@ -1,6 +1,5 @@
-
-use super::gamma_line::GammaLine;
 use super::detector::DetectorLine;
+use super::gamma_line::GammaLine;
 
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
 pub struct SourceActivity {
@@ -23,13 +22,7 @@ impl GammaSource {
         Self::default()
     }
 
-    pub fn add_gamma_line(
-        &mut self,
-        energy: f64,
-        intensity: f64,
-        intensity_uncertainty: f64,
-
-    ) {
+    pub fn add_gamma_line(&mut self, energy: f64, intensity: f64, intensity_uncertainty: f64) {
         let gamma_line = GammaLine {
             energy,
             intensity,
@@ -56,7 +49,6 @@ impl GammaSource {
     }
 
     pub fn gamma_line_efficiency_from_source_measurement(&self, line: &mut DetectorLine) {
-
         let source_activity = self.source_activity_measurement.activity;
         let activity_uncertainty = source_activity * 0.05; // 5% uncertainty in activity
 
@@ -67,9 +59,13 @@ impl GammaSource {
         let count_uncertainity = line.uncertainty;
 
         let efficiency = counts / (intensity * source_activity * run_time * 0.01) * 100.0; // efficiency in percent
-        let efficiency_uncertainty = efficiency * ( (count_uncertainity / counts).powi(2) + (intensity_uncertainty / intensity).powi(2) + (activity_uncertainty / source_activity).powi(2) ).sqrt();
+        let efficiency_uncertainty = efficiency
+            * ((count_uncertainity / counts).powi(2)
+                + (intensity_uncertainty / intensity).powi(2)
+                + (activity_uncertainty / source_activity).powi(2))
+            .sqrt();
 
-        line.efficiency = efficiency; 
+        line.efficiency = efficiency;
         line.efficiency_uncertainty = efficiency_uncertainty;
     }
 
@@ -152,21 +148,19 @@ impl GammaSource {
                     ));
 
                     ui.end_row();
-                        ui.label("Energy");
-                        ui.label("Intensity");
-                        ui.label("");
-                        ui.label("Delete");
+                    ui.label("Energy");
+                    ui.label("Intensity");
+                    ui.label("");
+                    ui.label("Delete");
                     ui.end_row();
-                        ui.label("Value");
-                        ui.label("Value");
-                        ui.label("±");
+                    ui.label("Value");
+                    ui.label("Value");
+                    ui.label("±");
                     ui.end_row();
-
 
                     let mut index_to_remove: Option<usize> = None;
 
                     for (index, gamma_line) in self.gamma_lines.iter_mut().enumerate() {
-
                         gamma_line.gamma_line_ui(ui);
 
                         if ui.button("X").clicked() {
@@ -174,9 +168,8 @@ impl GammaSource {
                         }
 
                         ui.end_row();
-
                     }
-                    
+
                     if let Some(index) = index_to_remove {
                         self.remove_gamma_line(index);
                     }
@@ -184,16 +177,14 @@ impl GammaSource {
                     if ui.button("Add γ Line").clicked() {
                         self.gamma_lines.push(GammaLine::new());
                     }
-
                 });
-            });
+        });
 
-            ui.separator();
+        ui.separator();
     }
 
     // Modify other methods to work with the new gamma_lines structure
     pub fn remove_gamma_line(&mut self, index: usize) {
         self.gamma_lines.remove(index);
     }
-
 }

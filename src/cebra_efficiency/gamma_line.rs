@@ -1,5 +1,3 @@
-
-
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
 pub struct GammaLine {
     pub energy: f64, // keV
@@ -13,7 +11,6 @@ impl GammaLine {
     }
 
     pub fn gamma_line_ui(&mut self, ui: &mut egui::Ui) {
-
         ui.add(
             egui::DragValue::new(&mut self.energy)
                 .speed(1.0)
@@ -34,6 +31,5 @@ impl GammaLine {
                 .clamp_range(0.0..=100.0)
                 .suffix("%"),
         );
-
     }
 }

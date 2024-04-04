@@ -150,6 +150,15 @@ jobs:
       run: echo "${{ matrix.TARGET }}"
 
     - uses: actions/checkout@master
+    
+     # Install necessary dependencies for glib-2.0
+    - name: Install glib-2.0 development files
+      run: sudo apt-get update && sudo apt-get install -y libglib2.0-dev
+
+    # Set PKG_CONFIG_PATH to locate glib-2.0.pc
+    - name: Set PKG_CONFIG_PATH
+      run: echo "::add-path::$(pkg-config --variable pc_path pkg-config)"
+
     - uses: actions-rs/toolchain@v1.0.1
       with:
         toolchain: stable

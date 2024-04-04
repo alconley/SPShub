@@ -13,10 +13,21 @@ pub struct DetectorLine {
 
 impl DetectorLine {
     fn ui(&mut self, ui: &mut egui::Ui) {
-        ui.add(egui::DragValue::new(&mut self.count).speed(1.0).clamp_range(0.0..=f64::INFINITY));
-        ui.add(egui::DragValue::new(&mut self.uncertainty).speed(1.0).clamp_range(0.0..=f64::INFINITY));
+        ui.add(
+            egui::DragValue::new(&mut self.count)
+                .speed(1.0)
+                .clamp_range(0.0..=f64::INFINITY),
+        );
+        ui.add(
+            egui::DragValue::new(&mut self.uncertainty)
+                .speed(1.0)
+                .clamp_range(0.0..=f64::INFINITY),
+        );
 
-        ui.label( format!("{:.2} ± {:.2}%", self.efficiency, self.efficiency_uncertainty) );
+        ui.label(format!(
+            "{:.2} ± {:.2}%",
+            self.efficiency, self.efficiency_uncertainty
+        ));
     }
 }
 
@@ -28,15 +39,17 @@ pub struct Detector {
 
 impl Detector {
     pub fn ui(&mut self, ui: &mut egui::Ui, gamma_source: &GammaSource) {
-
         ui.horizontal(|ui| {
             ui.label("Detector Name:");
             ui.text_edit_singleline(&mut self.name);
         });
 
         ui.collapsing(self.name.to_string(), |ui| {
-
-            let gamma_lines = gamma_source.gamma_lines.iter().map(|line| format!("{:.1} keV", line.energy)).collect::<Vec<_>>();
+            let gamma_lines = gamma_source
+                .gamma_lines
+                .iter()
+                .map(|line| format!("{:.1} keV", line.energy))
+                .collect::<Vec<_>>();
 
             egui::Grid::new("detector_grid")
                 .striped(false)
@@ -52,21 +65,32 @@ impl Detector {
                         egui::ComboBox::from_id_source(format!("Line {}", index))
                             .selected_text(format!("{:.1} keV", line.energy))
                             .show_ui(ui, |ui| {
-                                for (gamma_index, gamma_line_str) in gamma_lines.iter().enumerate() {
-                                    if ui.selectable_label(line.energy == gamma_source.gamma_lines[gamma_index].energy, gamma_line_str).clicked() {
+                                for (gamma_index, gamma_line_str) in gamma_lines.iter().enumerate()
+                                {
+                                    if ui
+                                        .selectable_label(
+                                            line.energy
+                                                == gamma_source.gamma_lines[gamma_index].energy,
+                                            gamma_line_str,
+                                        )
+                                        .clicked()
+                                    {
                                         line.energy = gamma_source.gamma_lines[gamma_index].energy;
-                                        line.intensity = gamma_source.gamma_lines[gamma_index].intensity;
-                                        line.intensity_uncertainty = gamma_source.gamma_lines[gamma_index].intensity_uncertainty;
+                                        line.intensity =
+                                            gamma_source.gamma_lines[gamma_index].intensity;
+                                        line.intensity_uncertainty = gamma_source.gamma_lines
+                                            [gamma_index]
+                                            .intensity_uncertainty;
                                     }
                                 }
                             });
-        
+
                         line.ui(ui);
-        
+
                         if ui.button("X").clicked() {
                             index_to_remove = Some(index);
                         }
-        
+
                         ui.end_row();
                     }
 
@@ -82,10 +106,7 @@ impl Detector {
             for line in &mut self.lines {
                 gamma_source.gamma_line_efficiency_from_source_measurement(line);
             }
-
         });
-
-
     }
 
     fn remove_line(&mut self, index: usize) {
@@ -93,13 +114,11 @@ impl Detector {
     }
 }
 
-
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Measurement {
     pub gamma_source: GammaSource,
     pub detectors: Vec<Detector>,
 }
-
 
 impl Measurement {
     pub fn new(source: Option<GammaSource>) -> Self {
@@ -109,12 +128,8 @@ impl Measurement {
         }
     }
 
-
-
     pub fn measurement_ui(&mut self, ui: &mut egui::Ui) {
-
         ui.collapsing("Measurement", |ui: &mut egui::Ui| {
-
             // ensure that there are gamma lines to display
             if self.gamma_source.gamma_lines.is_empty() {
                 ui.label("No gamma lines added to source");
@@ -124,13 +139,11 @@ impl Measurement {
             let mut index_to_remove = None;
 
             for (index, detector) in &mut self.detectors.iter_mut().enumerate() {
-
                 detector.ui(ui, &self.gamma_source);
 
                 if ui.button("Remove Detector").clicked() {
                     index_to_remove = Some(index);
                 }
-
             }
 
             ui.separator();
@@ -144,19 +157,13 @@ impl Measurement {
             }
 
             ui.separator();
-
         });
-            
     }
 
     pub fn update_ui(&mut self, ui: &mut egui::Ui) {
-
         ui.collapsing(format!("{} Measurement", self.gamma_source.name), |ui| {
-
             self.gamma_source.source_ui(ui);
             self.measurement_ui(ui);
-
         });
     }
-
 }
