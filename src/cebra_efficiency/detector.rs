@@ -1,3 +1,4 @@
+use super::exp_fitter::ExpFitter;
 use super::gamma_source::GammaSource;
 
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
@@ -35,6 +36,7 @@ impl DetectorLine {
 pub struct Detector {
     pub name: String,
     pub lines: Vec<DetectorLine>,
+    pub exp_fit: Option<ExpFitter>,
 }
 
 impl Detector {
@@ -99,9 +101,34 @@ impl Detector {
                     }
                 });
 
-            if ui.button("+").clicked() {
-                self.lines.push(DetectorLine::default());
-            }
+            ui.horizontal(|ui| {
+                if ui.button("+").clicked() {
+                    self.lines.push(DetectorLine::default());
+                }
+
+                let x_data = self
+                    .lines
+                    .iter()
+                    .map(|line| line.energy)
+                    .collect::<Vec<_>>();
+                let y_data = self
+                    .lines
+                    .iter()
+                    .map(|line| line.efficiency)
+                    .collect::<Vec<_>>();
+                let weights = self
+                    .lines
+                    .iter()
+                    .map(|line| 1.0 / line.efficiency_uncertainty)
+                    .collect::<Vec<_>>();
+
+                self.exp_fit = Some(ExpFitter::new(x_data, y_data, weights));
+
+                if let Some(exp_fit) = &mut self.exp_fit {
+                    exp_fit.fit_ui(ui);
+                }
+            });
+
 
             for line in &mut self.lines {
                 gamma_source.gamma_line_efficiency_from_source_measurement(line);
