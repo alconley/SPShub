@@ -34,7 +34,7 @@ impl Detector {
             ui.text_edit_singleline(&mut self.name);
         });
 
-        ui.collapsing(format!("{}", self.name), |ui| {
+        ui.collapsing(self.name.to_string(), |ui| {
 
             let gamma_lines = gamma_source.gamma_lines.iter().map(|line| format!("{:.1} keV", line.energy)).collect::<Vec<_>>();
 
@@ -104,7 +104,7 @@ pub struct Measurement {
 impl Measurement {
     pub fn new(source: Option<GammaSource>) -> Self {
         Self {
-            gamma_source: source.unwrap_or(GammaSource::new()),
+            gamma_source: source.unwrap_or_default(),
             detectors: vec![],
         }
     }
@@ -116,7 +116,7 @@ impl Measurement {
         ui.collapsing("Measurement", |ui: &mut egui::Ui| {
 
             // ensure that there are gamma lines to display
-            if self.gamma_source.gamma_lines.len() == 0 {
+            if self.gamma_source.gamma_lines.is_empty() {
                 ui.label("No gamma lines added to source");
                 return;
             }

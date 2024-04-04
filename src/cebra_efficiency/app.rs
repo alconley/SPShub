@@ -186,6 +186,7 @@ impl CeBrAEfficiencyApp {
         #[cfg(target_arch = "wasm32")]
         {
             // inplement save/load for web
+            ui.label("Save/Load not implemented for web as of now.");
 
         }
 
