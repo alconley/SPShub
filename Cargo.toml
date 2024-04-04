@@ -22,6 +22,8 @@ egui_extras = { version = "0.27.2", features = ["datepicker"]}
 chrono = { version = "0.4", features = ["serde"] }
 async-std = "1.5.3" 
 rfd = "0.13"
+varpro = "0.8.0"
+nalgebra = "0.32.4"
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
@@ -50,8 +52,8 @@ tar = "0.4.40"
 serde_json = "1.0"
 geo = "0.27.0"
 fnv = "1.0.7"
-varpro = "0.8.0"
-nalgebra = "0.32.4"
+# varpro = "0.8.0"
+# nalgebra = "0.32.4"
 
 polars = { version = "0.36", features = ["lazy", "parquet", "ndarray", "dtype-struct"] }
 

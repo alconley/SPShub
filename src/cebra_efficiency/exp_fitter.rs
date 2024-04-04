@@ -19,5 +19,25 @@ impl ExpFitter {
         }
     }
 
-    // fn exponential()
+    fn exponential(x: &DVector<f64>, b: f64) -> DVector<f64> {
+        x.map(|x_val| (-x_val/b).exp())
+    }
+
+    fn exponential_pd_b(x: &DVector<f64>, b: f64) -> DVector<f64> {
+        x.map(|x_val| (x_val/b.powi(2) ) * (-x_val/b).exp())
+    }
+
+    fn fit(&mut self) {
+        let x_data = DVector::from_vec(self.x.clone());
+        let y_data = DVector::from_vec(self.y.clone());
+        let weights = DVector::from_vec(self.weights.clone());
+
+        let parameter_names: Vec<String> = vec!["b".to_string()];
+        let initial_guess: Vec<f64> = vec![100.0];
+
+        let mut builder_proxy = SeparableModelBuilder::<f64>::new(parameter_names)
+            .initial_parameters(initial_guess);
+
+
+    }
 }

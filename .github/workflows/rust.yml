@@ -159,9 +159,8 @@ jobs:
     # Set PKG_CONFIG_PATH to locate glib-2.0.pc using environment files
     - if: matrix.os == 'ubuntu-latest'
       name: Set PKG_CONFIG_PATH
-      run: |
-        echo "PKG_CONFIG_PATH=$(pkg-config --variable pc_path pkg-config)" >> $GITHUB_ENV
-
+      run: echo "PKG_CONFIG_PATH=$(pkg-config --variable pc_path pkg-config)" 
+      
     - uses: actions-rs/toolchain@v1.0.1
       with:
         toolchain: stable
