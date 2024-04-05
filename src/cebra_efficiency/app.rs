@@ -1,84 +1,23 @@
-use eframe::egui::{self, Color32};
 use eframe::App;
-
-use egui_plot::{Legend, MarkerShape, Plot, PlotPoints, Points};
 
 use serde_yaml;
 
 use std::fs::File;
 use std::io::{Read, Write};
 
-use super::detector::Measurement;
+use super::measurements::{Measurement, MeasurementHandler};
 use super::gamma_source::GammaSource;
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct CeBrAEfficiencyApp {
-    measurements: Vec<Measurement>,
+    measurment_handler: MeasurementHandler,
 }
 
 impl CeBrAEfficiencyApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self {
-            measurements: vec![],
+            measurment_handler: MeasurementHandler::new(),
         }
-    }
-
-    fn plot(&mut self, ui: &mut egui::Ui) {
-        let plot = Plot::new("Efficiency")
-            .legend(Legend::default())
-            .min_size(egui::Vec2::new(400.0, 400.0));
-
-        let shapes = [
-            MarkerShape::Cross,
-            MarkerShape::Plus,
-            MarkerShape::Asterisk,
-            MarkerShape::Square,
-            MarkerShape::Circle,
-            MarkerShape::Diamond,
-        ];
-
-        let colors = [
-            Color32::from_rgb(0, 204, 0),   // green
-            Color32::from_rgb(102, 0, 204), // purple
-            Color32::from_rgb(204, 0, 0),   // red
-            Color32::from_rgb(0, 102, 204), // blue
-            Color32::from_rgb(204, 0, 204), // pink
-            Color32::from_rgb(204, 102, 0), // orange
-            Color32::from_rgb(204, 204, 0), // yellow
-            Color32::from_rgb(204, 0, 102), // more pink
-        ];
-
-        plot.show(ui, |plot_ui| {
-            for (measurement_index, measurement) in self.measurements.iter_mut().enumerate() {
-                let shape = shapes[measurement_index % shapes.len()];
-
-                for (detector_index, detector) in measurement.detectors.iter_mut().enumerate() {
-                    let color = colors[detector_index % colors.len()];
-                    let name = format!("{}: {}", detector.name, measurement.gamma_source.name);
-
-                    let mut points: Vec<[f64; 2]> = vec![];
-                    for detector_line in &detector.lines {
-                        points.push([detector_line.energy, detector_line.efficiency]);
-                    }
-
-                    let detector_plot_points = PlotPoints::new(points);
-
-                    let detector_points = Points::new(detector_plot_points)
-                        .filled(true)
-                        .color(color)
-                        .shape(shape)
-                        .radius(6.0)
-                        .name(name.to_string());
-
-                    plot_ui.points(detector_points);
-
-                    // check to see if exp_fit in detector is some and then call the draw line function
-                    if let Some(exp_fit) = &mut detector.exp_fit {
-                        exp_fit.draw_fit_line(plot_ui, color);
-                    }
-                }
-            }
-        });
     }
 
     fn get_fsu_152eu_source(&mut self) -> GammaSource {
@@ -123,10 +62,6 @@ impl CeBrAEfficiencyApp {
         gamma_source.add_gamma_line(3451.119, 0.942, 0.006);
 
         gamma_source
-    }
-
-    fn remove_measurement(&mut self, index: usize) {
-        self.measurements.remove(index);
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -211,46 +146,25 @@ impl App for CeBrAEfficiencyApp {
 
                     if ui.button("152Eu").clicked() {
                         let eu152 = self.get_fsu_152eu_source();
-                        self.measurements.push(Measurement::new(Some(eu152)));
+
+                        self.measurment_handler.measurements.push(Measurement::new(Some(eu152)));
                     }
 
                     if ui.button("56Co").clicked() {
                         let co56 = self.get_fsu_56co_source();
-                        self.measurements.push(Measurement::new(Some(co56)));
+
+                        self.measurment_handler.measurements.push(Measurement::new(Some(co56)));
                     }
 
                     ui.separator();
 
-                    if ui.button("New").clicked() {
-                        self.measurements.push(Measurement::new(None));
-                    }
-
-                    ui.separator();
                 });
 
-                ui.separator();
+                self.measurment_handler.sources_ui(ui);
 
-                let mut index_to_remove: Option<usize> = None;
-
-                ui.label("Sources");
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    for (index, measurement) in self.measurements.iter_mut().enumerate() {
-                        measurement.update_ui(ui);
-
-                        if ui.button("Remove Source").clicked() {
-                            index_to_remove = Some(index);
-                        }
-
-                        ui.separator();
-                    }
-
-                    if let Some(index) = index_to_remove {
-                        self.remove_measurement(index);
-                    }
-                });
             });
 
-            self.plot(ui);
+            self.measurment_handler.plot(ui);
         });
     }
 }

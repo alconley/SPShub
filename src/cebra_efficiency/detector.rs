@@ -38,7 +38,7 @@ pub struct Detector {
     pub name: String,
     pub lines: Vec<DetectorLine>,
     pub exp_fit: Option<ExpFitter>,
-
+    pub to_remove: Option<bool>,
 }
 
 impl Detector {
@@ -46,6 +46,10 @@ impl Detector {
         ui.horizontal(|ui| {
             ui.label("Detector Name:");
             ui.text_edit_singleline(&mut self.name);
+
+            if ui.button("X").clicked() {
+                self.to_remove = Some(true);
+            }
         });
 
         ui.collapsing(self.name.to_string(), |ui| {
@@ -108,6 +112,10 @@ impl Detector {
                     self.lines.push(DetectorLine::default());
                 }
 
+                ui.separator();
+
+                ui.label("Exponential Fitter:");
+
                 let x_data = self
                     .lines
                     .iter()
@@ -124,16 +132,33 @@ impl Detector {
                     .map(|line| 1.0 / line.efficiency_uncertainty)
                     .collect::<Vec<_>>();
 
-                if self.exp_fit.is_none() {
-                    self.exp_fit = Some(ExpFitter::new(x_data, y_data, weights));
+                if ui.button("Single").clicked() {
+                    let mut exp_fit = ExpFitter::new(x_data.clone(), y_data.clone(), weights.clone());
+                    exp_fit.single_exp_fit();
+                    self.exp_fit = Some(exp_fit);
                 }
-                // self.exp_fit = Some(ExpFitter::new(x_data, y_data, weights));
 
-                if let Some(exp_fit) = &mut self.exp_fit {
-                    exp_fit.fit_ui(ui);
+                if ui.button("Double").clicked() {
+                    let mut exp_fit = ExpFitter::new(x_data.clone(), y_data.clone(), weights.clone());
+                    exp_fit.double_exp_fit();
+                    self.exp_fit = Some(exp_fit);
+                }
+
+                ui.separator();
+
+                if ui.button("Clear").clicked() {
+                    if let Some(exp_fit) = &mut self.exp_fit {
+                        exp_fit.fit_params = None;
+                        exp_fit.fit_line = None;
+                        exp_fit.fit_uncertainity_lines = None;
+                        exp_fit.fit_label = "".to_string();
+                    }
                 }
             });
 
+            if let Some(exp_fit) = &mut self.exp_fit {
+                ui.label(exp_fit.fit_label.to_string());
+            }
 
             for line in &mut self.lines {
                 gamma_source.gamma_line_efficiency_from_source_measurement(line);
@@ -148,56 +173,3 @@ impl Detector {
 
 }
 
-#[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
-pub struct Measurement {
-    pub gamma_source: GammaSource,
-    pub detectors: Vec<Detector>,
-}
-
-impl Measurement {
-    pub fn new(source: Option<GammaSource>) -> Self {
-        Self {
-            gamma_source: source.unwrap_or_default(),
-            detectors: vec![],
-        }
-    }
-
-    pub fn measurement_ui(&mut self, ui: &mut egui::Ui) {
-        ui.collapsing("Measurement", |ui: &mut egui::Ui| {
-            // ensure that there are gamma lines to display
-            if self.gamma_source.gamma_lines.is_empty() {
-                ui.label("No gamma lines added to source");
-                return;
-            }
-
-            let mut index_to_remove = None;
-
-            for (index, detector) in &mut self.detectors.iter_mut().enumerate() {
-                detector.ui(ui, &self.gamma_source);
-
-                if ui.button("Remove Detector").clicked() {
-                    index_to_remove = Some(index);
-                }
-            }
-
-            ui.separator();
-
-            if ui.button("Add Detector").clicked() {
-                self.detectors.push(Detector::default());
-            }
-
-            if let Some(index) = index_to_remove {
-                self.detectors.remove(index);
-            }
-
-            ui.separator();
-        });
-    }
-
-    pub fn update_ui(&mut self, ui: &mut egui::Ui) {
-        ui.collapsing(format!("{} Measurement", self.gamma_source.name), |ui| {
-            self.gamma_source.source_ui(ui);
-            self.measurement_ui(ui);
-        });
-    }
-}

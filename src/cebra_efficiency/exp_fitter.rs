@@ -2,7 +2,7 @@ use nalgebra::DVector;
 use varpro::model::builder::SeparableModelBuilder;
 use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
 
-use egui_plot::{Line, PlotPoint, PlotPoints, PlotUi};
+use egui_plot::{Line, PlotPoint, PlotPoints, PlotUi, Polygon};
 
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
 pub struct ExpFitter {
@@ -15,7 +15,7 @@ pub struct ExpFitter {
     pub fit_line: Option<Vec<Vec<PlotPoint>>>,
 
     #[serde(skip)]
-    pub fit_uncertainity_lines: Option<Vec<Vec<PlotPoint>>>,
+    pub fit_uncertainity_lines: Option<Vec<PlotPoint>>,
 
     pub fit_label: String,
 }
@@ -48,6 +48,7 @@ impl ExpFitter {
     pub fn single_exp_fit(&mut self) {
         self.fit_params = None;
         self.fit_line = None;
+        self.fit_uncertainity_lines = None;
         self.fit_label = "".to_string();
 
         let x_data = DVector::from_vec(self.x.clone());
@@ -120,13 +121,14 @@ impl ExpFitter {
 
             self.fit_params = Some(parameters);
 
-            let num_points = 1000;
+            let num_points = 2000;
 
-            let min_x = self.x.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+            // let min_x = self.x.iter().fold(f64::INFINITY, |a, &b| a.min(b));
             let max_x = self.x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
-            let start = min_x - 50.0;
-            let end = max_x + 50.0;
+            // let start = min_x - 100.0;
+            let start = 1.0;
+            let end = max_x + 1000.0;
 
             let step = (end - start) / num_points as f64;
 
@@ -139,17 +141,43 @@ impl ExpFitter {
                 })
                 .collect();
 
-            
-
             self.fit_line = Some(vec![plot_points]);
 
+            /*  // as of egui 0.27 only convex polygons are supported
+            // uncomment this if concave polygons are supported in the future
 
+
+            let upper_points: Vec<PlotPoint> = (0..=num_points)
+                .map(|i| {
+                    let x = start + i as f64 * step;
+                    let y = (parameter_a + parameter_a_uncertainity) * (-x / (parameter_b + parameter_b_uncertainity)).exp();
+
+                    PlotPoint::new(x, y)
+                })
+                .collect();
+
+            let lower_points: Vec<PlotPoint> = (0..=num_points)
+                .map(|i| {
+                    let x = end - i as f64 * step;
+                    let y = (parameter_a - parameter_a_uncertainity) * (-x / (parameter_b - parameter_b_uncertainity)).exp();
+
+                    PlotPoint::new(x, y)
+                })
+                .collect();
+
+            // let mut fill_points = upper_points.clone();
+            // fill_points.extend(lower_points);
+
+            // self.fit_uncertainity_lines = Some(fill_points);
+
+            */
         }
     }
 
     pub fn double_exp_fit(&mut self) {
         self.fit_params = None;
         self.fit_line = None;
+        self.fit_uncertainity_lines = None;
         self.fit_label = "".to_string();
 
         let x_data = DVector::from_vec(self.x.clone());
@@ -240,12 +268,12 @@ impl ExpFitter {
 
             self.fit_params = Some(parameters);
 
-            let min_x = self.x.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+            // let min_x = self.x.iter().fold(f64::INFINITY, |a, &b| a.min(b));
             let max_x = self.x.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
             let num_points = 1000;
 
-            let start = min_x - 50.0;
+            let start = 0.0;
             let end = max_x + 50.0;
 
             let step = (end - start) / num_points as f64;
@@ -262,6 +290,9 @@ impl ExpFitter {
 
             self.fit_line = Some(vec![plot_points]);
 
+            /*  // as of egui 0.27 only convex polygons are supported
+                // uncomment this if concave polygons are supported in the future
+
             let upper_points: Vec<PlotPoint> = (0..=num_points)
                 .map(|i| {
                     let x = start + i as f64 * step;
@@ -273,7 +304,7 @@ impl ExpFitter {
 
             let lower_points: Vec<PlotPoint> = (0..=num_points)
                 .map(|i| {
-                    let x = start + i as f64 * step;
+                    let x = end - i as f64 * step;
                     let y = (parameter_a - parameter_a_uncertainity) * (-x / (parameter_b + parameter_b_uncertainity)).exp() + (parameter_c - parameter_c_uncertainity) * (-x / (parameter_d + parameter_d_uncertainity)).exp();
 
                     PlotPoint::new(x, y)
@@ -285,7 +316,9 @@ impl ExpFitter {
             fill_points.extend(lower_points.iter().rev());
 
 
-            self.fit_uncertainity_lines = Some(vec![fill_points]);
+            self.fit_uncertainity_lines = Some(fill_points);
+
+            */
             
         }
     }
@@ -303,6 +336,15 @@ impl ExpFitter {
             self.double_exp_fit();
         }
 
+        ui.separator();
+
+        if ui.button("Clear").clicked() {
+            self.fit_params = None;
+            self.fit_line = None;
+            self.fit_uncertainity_lines = None;
+            self.fit_label = "".to_string();
+        }
+
     }
 
     pub fn draw_fit_line(&self, plot_ui: &mut PlotUi, color: egui::Color32) {
@@ -316,5 +358,15 @@ impl ExpFitter {
                 plot_ui.line(line);
             }
         }
+
+        if let Some(fit_line_uncertainity) = &self.fit_uncertainity_lines {
+            let uncertainity_band = Polygon::new(PlotPoints::Owned(fit_line_uncertainity.clone()))
+                .stroke(egui::Stroke::new(0.0, color))
+                .highlight(true)
+                .width(0.0);
+
+            plot_ui.polygon(uncertainity_band);
+        }
     }
+
 }
