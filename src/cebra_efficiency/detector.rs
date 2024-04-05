@@ -1,7 +1,6 @@
 use super::exp_fitter::ExpFitter;
 use super::gamma_source::GammaSource;
 
-
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
 pub struct DetectorLine {
     pub count: f64,
@@ -133,13 +132,15 @@ impl Detector {
                     .collect::<Vec<_>>();
 
                 if ui.button("Single").clicked() {
-                    let mut exp_fit = ExpFitter::new(x_data.clone(), y_data.clone(), weights.clone());
+                    let mut exp_fit =
+                        ExpFitter::new(x_data.clone(), y_data.clone(), weights.clone());
                     exp_fit.single_exp_fit();
                     self.exp_fit = Some(exp_fit);
                 }
 
                 if ui.button("Double").clicked() {
-                    let mut exp_fit = ExpFitter::new(x_data.clone(), y_data.clone(), weights.clone());
+                    let mut exp_fit =
+                        ExpFitter::new(x_data.clone(), y_data.clone(), weights.clone());
                     exp_fit.double_exp_fit();
                     self.exp_fit = Some(exp_fit);
                 }
@@ -169,7 +170,4 @@ impl Detector {
     fn remove_line(&mut self, index: usize) {
         self.lines.remove(index);
     }
-
-
 }
-

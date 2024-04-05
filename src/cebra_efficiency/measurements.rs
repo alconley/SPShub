@@ -1,9 +1,9 @@
 use super::detector::Detector;
-use super::gamma_source::GammaSource;
 use super::exp_fitter::ExpFitter;
+use super::gamma_source::GammaSource;
 
-use egui_plot::{Legend, MarkerShape, Plot, PlotPoints, Points, Line};
 use eframe::egui::{self, Color32};
+use egui_plot::{Legend, Line, MarkerShape, Plot, PlotPoints, Points};
 
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Measurement {
@@ -18,7 +18,7 @@ impl Measurement {
             detectors: vec![],
         }
     }
-    
+
     pub fn measurement_ui(&mut self, ui: &mut egui::Ui) {
         ui.collapsing("Measurement", |ui: &mut egui::Ui| {
             // ensure that there are gamma lines to display
@@ -30,13 +30,11 @@ impl Measurement {
             let mut index_to_remove = None;
 
             for (index, detector) in &mut self.detectors.iter_mut().enumerate() {
-
                 detector.ui(ui, &self.gamma_source);
 
                 if detector.to_remove == Some(true) {
                     index_to_remove = Some(index);
                 }
-
             }
 
             ui.separator();
@@ -61,7 +59,6 @@ impl Measurement {
     }
 }
 
-
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
 pub struct MeasurementHandler {
     pub measurements: Vec<Measurement>,
@@ -80,24 +77,23 @@ impl MeasurementHandler {
         let mut x_data: Vec<f64> = vec![];
         let mut y_data: Vec<f64> = vec![];
         let mut weights: Vec<f64> = vec![];
-    
+
         for measurement in &self.measurements {
             for detector in &measurement.detectors {
                 if detector.name == name {
                     for line in &detector.lines {
                         x_data.push(line.energy);
                         y_data.push(line.efficiency);
-                        weights.push(1.0/line.efficiency_uncertainty);
+                        weights.push(1.0 / line.efficiency_uncertainty);
                     }
                 }
             }
         }
-    
+
         (x_data, y_data, weights)
     }
 
     fn fit_detectors_ui(&mut self, ui: &mut egui::Ui) {
-        
         let mut detector_names: Vec<String> = vec![];
         for measurement in &self.measurements {
             for detector in &measurement.detectors {
@@ -109,16 +105,18 @@ impl MeasurementHandler {
         egui::Grid::new("detector_grid")
             .striped(true)
             .show(ui, |ui| {
-
                 ui.label("Detector Name");
                 ui.label("Exponential Fitter");
-                for detector in detector_names {
+                ui.end_row();
+
+                for (index, detector) in detector_names.iter().enumerate() {
                     ui.label(detector.clone());
 
+                    
                     ui.horizontal(|ui| {
-
                         if ui.button("Single").clicked() {
-                            let (x_data, y_data, weights) = self.get_detector_data_from_measurements(detector.clone());
+                            let (x_data, y_data, weights) =
+                                self.get_detector_data_from_measurements(detector.clone());
                             let mut exp_fitter = ExpFitter::new(x_data, y_data, weights);
                             exp_fitter.single_exp_fit();
 
@@ -126,19 +124,18 @@ impl MeasurementHandler {
                         }
 
                         if ui.button("Double").clicked() {
-                            let (x_data, y_data, weights) = self.get_detector_data_from_measurements(detector.clone());
+                            let (x_data, y_data, weights) =
+                                self.get_detector_data_from_measurements(detector.clone());
                             let mut exp_fitter = ExpFitter::new(x_data, y_data, weights);
                             exp_fitter.double_exp_fit();
-                            
+
                             self.measurement_exp_fits.push(exp_fitter);
                         }
-
                     });
-
+                    
                     ui.end_row();
                 }
             });
-
     }
 
     fn remove_measurement(&mut self, index: usize) {
@@ -196,10 +193,15 @@ impl MeasurementHandler {
 
                     // draw the uncertainity as vertical lines from the efficiency points
                     for detector_line in &detector.lines {
-
                         let mut y_err_points: Vec<[f64; 2]> = vec![];
-                        y_err_points.push([detector_line.energy, detector_line.efficiency - detector_line.efficiency_uncertainty]);
-                        y_err_points.push([detector_line.energy, detector_line.efficiency + detector_line.efficiency_uncertainty]);
+                        y_err_points.push([
+                            detector_line.energy,
+                            detector_line.efficiency - detector_line.efficiency_uncertainty,
+                        ]);
+                        y_err_points.push([
+                            detector_line.energy,
+                            detector_line.efficiency + detector_line.efficiency_uncertainty,
+                        ]);
 
                         let y_err_plot_points = PlotPoints::new(y_err_points);
 
@@ -211,7 +213,6 @@ impl MeasurementHandler {
                         plot_ui.line(y_err_points);
                     }
 
-
                     // check to see if exp_fit in detector is some and then call the draw line function
                     if let Some(exp_fit) = &mut detector.exp_fit {
                         exp_fit.draw_fit_line(plot_ui, color);
@@ -219,8 +220,9 @@ impl MeasurementHandler {
                 }
             }
 
-            for exp_fitter in &mut self.measurement_exp_fits {
-                exp_fitter.draw_fit_line(plot_ui, Color32::from_rgb(255, 0, 0));
+            for (index, exp_fitter) in &mut self.measurement_exp_fits.iter().enumerate() {
+                let color = colors[index % colors.len()];
+                exp_fitter.draw_fit_line(plot_ui, color);
             }
         });
     }
@@ -249,24 +251,13 @@ impl MeasurementHandler {
                 }
 
                 ui.separator();
-
             });
-
         });
 
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.collapsing("Fitter", |ui| {
-
                 self.fit_detectors_ui(ui);
             });
-
         });
-
-
     }
-
 }
-
-
-
-

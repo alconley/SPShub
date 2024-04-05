@@ -5,8 +5,8 @@ use serde_yaml;
 use std::fs::File;
 use std::io::{Read, Write};
 
-use super::measurements::{Measurement, MeasurementHandler};
 use super::gamma_source::GammaSource;
+use super::measurements::{Measurement, MeasurementHandler};
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 pub struct CeBrAEfficiencyApp {
@@ -147,21 +147,23 @@ impl App for CeBrAEfficiencyApp {
                     if ui.button("152Eu").clicked() {
                         let eu152 = self.get_fsu_152eu_source();
 
-                        self.measurment_handler.measurements.push(Measurement::new(Some(eu152)));
+                        self.measurment_handler
+                            .measurements
+                            .push(Measurement::new(Some(eu152)));
                     }
 
                     if ui.button("56Co").clicked() {
                         let co56 = self.get_fsu_56co_source();
 
-                        self.measurment_handler.measurements.push(Measurement::new(Some(co56)));
+                        self.measurment_handler
+                            .measurements
+                            .push(Measurement::new(Some(co56)));
                     }
 
                     ui.separator();
-
                 });
 
                 self.measurment_handler.sources_ui(ui);
-
             });
 
             self.measurment_handler.plot(ui);

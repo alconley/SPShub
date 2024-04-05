@@ -282,7 +282,8 @@ impl ExpFitter {
             let plot_points: Vec<PlotPoint> = (0..=num_points)
                 .map(|i| {
                     let x = start + i as f64 * step;
-                    let y = parameter_a * (-x / parameter_b).exp() + parameter_c * (-x / parameter_d).exp();
+                    let y = parameter_a * (-x / parameter_b).exp()
+                        + parameter_c * (-x / parameter_d).exp();
 
                     PlotPoint::new(x, y)
                 })
@@ -319,38 +320,36 @@ impl ExpFitter {
             self.fit_uncertainity_lines = Some(fill_points);
 
             */
-            
         }
     }
 
-    pub fn fit_ui(&mut self, ui: &mut egui::Ui) {
-        ui.separator();
+    // pub fn fit_ui(&mut self, ui: &mut egui::Ui) {
+    //     ui.separator();
 
-        ui.label("Exponential Fitter:");
+    //     ui.label("Exponential Fitter:");
 
-        if ui.button("Single").clicked() {
-            self.single_exp_fit();
-        }
+    //     if ui.button("Single").clicked() {
+    //         self.single_exp_fit();
+    //     }
 
-        if ui.button("Double").clicked() {
-            self.double_exp_fit();
-        }
+    //     if ui.button("Double").clicked() {
+    //         self.double_exp_fit();
+    //     }
 
-        ui.separator();
+    //     ui.separator();
 
-        if ui.button("Clear").clicked() {
-            self.fit_params = None;
-            self.fit_line = None;
-            self.fit_uncertainity_lines = None;
-            self.fit_label = "".to_string();
-        }
+    //     if ui.button("Clear").clicked() {
+    //         self.fit_params = None;
+    //         self.fit_line = None;
+    //         self.fit_uncertainity_lines = None;
+    //         self.fit_label = "".to_string();
+    //     }
 
-    }
+    // }
 
     pub fn draw_fit_line(&self, plot_ui: &mut PlotUi, color: egui::Color32) {
         if let Some(fit_line) = &self.fit_line {
             for points in fit_line.iter() {
-
                 let line = Line::new(PlotPoints::Owned(points.clone()))
                     .color(color)
                     .stroke(egui::Stroke::new(1.0, color));
@@ -368,5 +367,4 @@ impl ExpFitter {
             plot_ui.polygon(uncertainity_band);
         }
     }
-
 }
