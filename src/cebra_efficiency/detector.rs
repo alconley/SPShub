@@ -26,7 +26,7 @@ impl DetectorLine {
         );
 
         ui.label(format!(
-            "{:.2} ± {:.2}%",
+            "{:.3} ± {:.3}%",
             self.efficiency, self.efficiency_uncertainty
         ));
     }
@@ -111,55 +111,7 @@ impl Detector {
                     self.lines.push(DetectorLine::default());
                 }
 
-                ui.separator();
-
-                ui.label("Exponential Fitter:");
-
-                let x_data = self
-                    .lines
-                    .iter()
-                    .map(|line| line.energy)
-                    .collect::<Vec<_>>();
-                let y_data = self
-                    .lines
-                    .iter()
-                    .map(|line| line.efficiency)
-                    .collect::<Vec<_>>();
-                let weights = self
-                    .lines
-                    .iter()
-                    .map(|line| 1.0 / line.efficiency_uncertainty)
-                    .collect::<Vec<_>>();
-
-                if ui.button("Single").clicked() {
-                    let mut exp_fit =
-                        ExpFitter::new(x_data.clone(), y_data.clone(), weights.clone());
-                    exp_fit.single_exp_fit();
-                    self.exp_fit = Some(exp_fit);
-                }
-
-                if ui.button("Double").clicked() {
-                    let mut exp_fit =
-                        ExpFitter::new(x_data.clone(), y_data.clone(), weights.clone());
-                    exp_fit.double_exp_fit();
-                    self.exp_fit = Some(exp_fit);
-                }
-
-                ui.separator();
-
-                if ui.button("Clear").clicked() {
-                    if let Some(exp_fit) = &mut self.exp_fit {
-                        exp_fit.fit_params = None;
-                        exp_fit.fit_line = None;
-                        exp_fit.fit_uncertainity_lines = None;
-                        exp_fit.fit_label = "".to_string();
-                    }
-                }
             });
-
-            if let Some(exp_fit) = &mut self.exp_fit {
-                ui.label(exp_fit.fit_label.to_string());
-            }
 
             for line in &mut self.lines {
                 gamma_source.gamma_line_efficiency_from_source_measurement(line);

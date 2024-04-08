@@ -15,7 +15,7 @@ pub struct ExpFitter {
     pub fit_line: Option<Vec<Vec<PlotPoint>>>,
 
     #[serde(skip)]
-    pub fit_uncertainity_lines: Option<Vec<PlotPoint>>,
+    pub fit_uncertainity_lines: Option<Vec<Vec<PlotPoint>>>,
 
     pub fit_label: String,
 }
@@ -45,7 +45,7 @@ impl ExpFitter {
         x.map(|x_val| (x_val / d.powi(2)) * (-x_val / d).exp())
     }
 
-    pub fn single_exp_fit(&mut self) {
+    pub fn single_exp_fit(&mut self, initial_b_guess: f64) {
         self.fit_params = None;
         self.fit_line = None;
         self.fit_uncertainity_lines = None;
@@ -56,47 +56,50 @@ impl ExpFitter {
         let weights = DVector::from_vec(self.weights.clone());
 
         let parameter_names: Vec<String> = vec!["b".to_string()];
-        let initial_guess: Vec<f64> = vec![100.0];
+
+        let intitial_parameters = vec![initial_b_guess];
 
         let builder_proxy = SeparableModelBuilder::<f64>::new(parameter_names)
-            .initial_parameters(initial_guess)
+            .initial_parameters(intitial_parameters)
             .independent_variable(x_data)
             .function(&["b"], Self::exponential)
             .partial_deriv("b", Self::exponential_pd_b);
 
-        let model = builder_proxy.build().unwrap();
+        let model = match builder_proxy.build() {
+            Ok(model) => model,
+            Err(err) => {
+                log::error!("Error building model: {}", err);
+                return;
+            }
+        };
 
-        let problem = LevMarProblemBuilder::new(model)
+        let problem = match LevMarProblemBuilder::new(model)
             .observations(y_data)
             .weights(weights)
             .build()
-            .unwrap();
+                {
+                    Ok(problem) => problem,
+                    Err(err) => {
+                        log::error!("Error building problem: {}", err);
+                        return;
+                    }
+                };
 
         if let Ok((fit_result, fit_statistics)) =
             LevMarSolver::default().fit_with_statistics(problem)
         {
-            log::info!(
-                "Nonlinear Parameters: {:?}",
-                fit_result.nonlinear_parameters()
-            );
-            log::info!(
-                "nonlinear parameters variance: {:?}",
-                fit_statistics.nonlinear_parameters_variance()
-            );
-
-            log::info!(
-                "Linear Coefficients: {:?}",
-                fit_result.linear_coefficients().unwrap()
-            );
-            log::info!(
-                "linear coefficients variance: {:?}",
-                fit_statistics.linear_coefficients_variance()
-            );
-
             let nonlinear_parameters = fit_result.nonlinear_parameters();
             let nonlinear_variances = fit_statistics.nonlinear_parameters_variance();
-
-            let linear_coefficients = fit_result.linear_coefficients().unwrap();
+            
+            let linear_coefficients = fit_result.linear_coefficients();
+            
+            let linear_coefficients = match linear_coefficients {
+                Some(coefficients) => coefficients,
+                None => {
+                    log::error!("No linear coefficients found");
+                    return;
+                }
+            };
             let linear_variances = fit_statistics.linear_coefficients_variance();
 
             let parameter_a = linear_coefficients[0];
@@ -143,10 +146,7 @@ impl ExpFitter {
 
             self.fit_line = Some(vec![plot_points]);
 
-            /*  // as of egui 0.27 only convex polygons are supported
-            // uncomment this if concave polygons are supported in the future
-
-
+            
             let upper_points: Vec<PlotPoint> = (0..=num_points)
                 .map(|i| {
                     let x = start + i as f64 * step;
@@ -158,23 +158,35 @@ impl ExpFitter {
 
             let lower_points: Vec<PlotPoint> = (0..=num_points)
                 .map(|i| {
-                    let x = end - i as f64 * step;
+                    let x = start + i as f64 * step;
                     let y = (parameter_a - parameter_a_uncertainity) * (-x / (parameter_b - parameter_b_uncertainity)).exp();
 
                     PlotPoint::new(x, y)
                 })
                 .collect();
 
-            // let mut fill_points = upper_points.clone();
-            // fill_points.extend(lower_points);
+            // egui only supports convex polygons so i need to split the polygon into multiple.
+            // So each polygon will be the two points in the upper and two in the lower
+            // then the next polygon will be the next two points in the upper and lower
+            // and so on
 
-            // self.fit_uncertainity_lines = Some(fill_points);
+            let mut polygons: Vec<Vec<PlotPoint>> = Vec::new();
+            for i in 0..num_points {
+                let polygon = vec![
+                    upper_points[i],
+                    upper_points[i + 1],
+                    lower_points[i + 1],
+                    lower_points[i],
+                ];
+                polygons.push(polygon);
+            }
+            
+            self.fit_uncertainity_lines = Some(polygons);
 
-            */
         }
     }
 
-    pub fn double_exp_fit(&mut self) {
+    pub fn double_exp_fit(&mut self, initial_b_guess: f64, initial_d_guess: f64) {
         self.fit_params = None;
         self.fit_line = None;
         self.fit_uncertainity_lines = None;
@@ -185,49 +197,54 @@ impl ExpFitter {
         let weights = DVector::from_vec(self.weights.clone());
 
         let parameter_names: Vec<String> = vec!["b".to_string(), "d".to_string()];
-        let initial_guess: Vec<f64> = vec![100.0, 100.0];
+
+        let initial_parameters = vec![initial_b_guess, initial_d_guess];
 
         let builder_proxy = SeparableModelBuilder::<f64>::new(parameter_names)
-            .initial_parameters(initial_guess)
+            .initial_parameters(initial_parameters)
             .independent_variable(x_data)
             .function(&["b"], Self::exponential)
             .partial_deriv("b", Self::exponential_pd_b)
             .function(&["d"], Self::exponential)
             .partial_deriv("d", Self::exponential_pd_d);
 
-        let model = builder_proxy.build().unwrap();
+        let model = match builder_proxy.build() {
+            Ok(model) => model,
+            Err(err) => {
+                log::error!("Error building model: {}", err);
+                return;
+            }
+        };
 
-        let problem = LevMarProblemBuilder::new(model)
+        let problem = match LevMarProblemBuilder::new(model)
             .observations(y_data)
             .weights(weights)
             .build()
-            .unwrap();
+                {
+                    Ok(problem) => problem,
+                    Err(err) => {
+                        log::error!("Error building problem: {}", err);
+                        return;
+                    }
+                };
 
         if let Ok((fit_result, fit_statistics)) =
             LevMarSolver::default().fit_with_statistics(problem)
         {
-            log::info!(
-                "Nonlinear Parameters: {:?}",
-                fit_result.nonlinear_parameters()
-            );
-            log::info!(
-                "nonlinear parameters variance: {:?}",
-                fit_statistics.nonlinear_parameters_variance()
-            );
-
-            log::info!(
-                "Linear Coefficients: {:?}",
-                fit_result.linear_coefficients().unwrap()
-            );
-            log::info!(
-                "linear coefficients variance: {:?}",
-                fit_statistics.linear_coefficients_variance()
-            );
 
             let nonlinear_parameters = fit_result.nonlinear_parameters();
             let nonlinear_variances = fit_statistics.nonlinear_parameters_variance();
 
-            let linear_coefficients = fit_result.linear_coefficients().unwrap();
+            let linear_coefficients = fit_result.linear_coefficients();
+
+            let linear_coefficients = match linear_coefficients {
+                Some(coefficients) => coefficients,
+                None => {
+                    log::error!("No linear coefficients found");
+                    return;
+                }
+            };
+
             let linear_variances = fit_statistics.linear_coefficients_variance();
 
             let parameter_a = linear_coefficients[0];
@@ -263,7 +280,7 @@ impl ExpFitter {
                 parameter_b, parameter_b_uncertainity,
                 parameter_c, parameter_c_uncertainity,
                 parameter_d, parameter_d_uncertainity);
-
+            
             self.fit_label = fit_string;
 
             self.fit_params = Some(parameters);
@@ -274,7 +291,9 @@ impl ExpFitter {
             let num_points = 1000;
 
             let start = 0.0;
-            let end = max_x + 50.0;
+            let end = max_x + 0.0;
+            let end = 7000.0;
+
 
             let step = (end - start) / num_points as f64;
 
@@ -291,13 +310,10 @@ impl ExpFitter {
 
             self.fit_line = Some(vec![plot_points]);
 
-            /*  // as of egui 0.27 only convex polygons are supported
-                // uncomment this if concave polygons are supported in the future
-
             let upper_points: Vec<PlotPoint> = (0..=num_points)
                 .map(|i| {
                     let x = start + i as f64 * step;
-                    let y = (parameter_a + parameter_a_uncertainity) * (-x / (parameter_b - parameter_b_uncertainity)).exp() + (parameter_c + parameter_c_uncertainity) * (-x / (parameter_d - parameter_d_uncertainity)).exp();
+                    let y = (parameter_a + parameter_a_uncertainity) * (-x / (parameter_b + parameter_b_uncertainity)).exp() + (parameter_c + parameter_c_uncertainity) * (-x / (parameter_d + parameter_d_uncertainity)).exp();
 
                     PlotPoint::new(x, y)
                 })
@@ -305,66 +321,130 @@ impl ExpFitter {
 
             let lower_points: Vec<PlotPoint> = (0..=num_points)
                 .map(|i| {
-                    let x = end - i as f64 * step;
-                    let y = (parameter_a - parameter_a_uncertainity) * (-x / (parameter_b + parameter_b_uncertainity)).exp() + (parameter_c - parameter_c_uncertainity) * (-x / (parameter_d + parameter_d_uncertainity)).exp();
+                    let x = start + i as f64 * step;
+                    let y = (parameter_a - parameter_a_uncertainity) * (-x / (parameter_b - parameter_b_uncertainity)).exp() + (parameter_c - parameter_c_uncertainity) * (-x / (parameter_d - parameter_d_uncertainity)).exp();
 
                     PlotPoint::new(x, y)
                 })
                 .collect();
 
-            // combine the upper and lower points into a sigle vec<plotpoint>
-            let mut fill_points = upper_points.clone();
-            fill_points.extend(lower_points.iter().rev());
-
-
-            self.fit_uncertainity_lines = Some(fill_points);
-
-            */
+            let mut polygons: Vec<Vec<PlotPoint>> = Vec::new();
+            for i in 0..num_points {
+                let polygon = vec![
+                    upper_points[i],
+                    upper_points[i + 1],
+                    lower_points[i + 1],
+                    lower_points[i],
+                ];
+                polygons.push(polygon);
+            }
+            
+            self.fit_uncertainity_lines = Some(polygons);
         }
     }
-
-    // pub fn fit_ui(&mut self, ui: &mut egui::Ui) {
-    //     ui.separator();
-
-    //     ui.label("Exponential Fitter:");
-
-    //     if ui.button("Single").clicked() {
-    //         self.single_exp_fit();
-    //     }
-
-    //     if ui.button("Double").clicked() {
-    //         self.double_exp_fit();
-    //     }
-
-    //     ui.separator();
-
-    //     if ui.button("Clear").clicked() {
-    //         self.fit_params = None;
-    //         self.fit_line = None;
-    //         self.fit_uncertainity_lines = None;
-    //         self.fit_label = "".to_string();
-    //     }
-
-    // }
-
-    pub fn draw_fit_line(&self, plot_ui: &mut PlotUi, color: egui::Color32) {
+ 
+    pub fn draw_fit_line(&self, plot_ui: &mut PlotUi, color: egui::Color32, name: String) {
         if let Some(fit_line) = &self.fit_line {
             for points in fit_line.iter() {
                 let line = Line::new(PlotPoints::Owned(points.clone()))
                     .color(color)
-                    .stroke(egui::Stroke::new(1.0, color));
+                    .stroke(egui::Stroke::new(1.0, color))
+                    .name(name.clone());
 
                 plot_ui.line(line);
             }
         }
 
         if let Some(fit_line_uncertainity) = &self.fit_uncertainity_lines {
-            let uncertainity_band = Polygon::new(PlotPoints::Owned(fit_line_uncertainity.clone()))
-                .stroke(egui::Stroke::new(0.0, color))
-                .highlight(true)
-                .width(0.0);
+            for points in fit_line_uncertainity.iter() {
 
-            plot_ui.polygon(uncertainity_band);
+                let uncertainity_band = Polygon::new(PlotPoints::Owned(points.clone()))
+                .stroke(egui::Stroke::new(0.0, color))
+                .width(0.0)
+                .name(name.clone());
+
+                plot_ui.polygon(uncertainity_band);
+            }
+
         }
+    }
+
+}
+
+#[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
+pub struct Fitter {
+    pub name: String,
+    pub data: (Vec<f64>, Vec<f64>, Vec<f64>), // (x_data, y_data, weights)
+    pub exp_fitter: Option<ExpFitter>,
+    pub initial_b_guess: f64,
+    pub initial_d_guess: f64,
+}
+
+impl Fitter {
+
+    pub fn ui(&mut self, ui: &mut egui::Ui) {
+
+            ui.label(self.name.to_string());
+
+
+        ui.horizontal(|ui| {
+
+            ui.add(
+                egui::DragValue::new(&mut self.initial_b_guess)
+                    .prefix("b: ")
+                    .speed(10.0)
+                    .clamp_range(0.0..=f64::INFINITY)
+            );
+
+            ui.add(
+                egui::DragValue::new(&mut self.initial_d_guess)
+                    .prefix("d: ")
+                    .speed(10.0)
+                    .clamp_range(0.0..=f64::INFINITY)
+            );
+        });
+
+        ui.horizontal(|ui| {
+
+            if ui.button("Single").clicked() {
+
+                let (x_data, y_data, weights) = self.data.clone();
+                self.exp_fitter = Some(ExpFitter::new(x_data, y_data, weights));
+
+                if let Some(exp_fitter) = &mut self.exp_fitter {
+                    exp_fitter.single_exp_fit(self.initial_b_guess);
+                }
+
+            }
+
+            if ui.button("Double").clicked() {
+                let (x_data, y_data, weights) = self.data.clone();
+                self.exp_fitter = Some(ExpFitter::new(x_data, y_data, weights));
+
+                if let Some(exp_fitter) = &mut self.exp_fitter {
+                    exp_fitter.double_exp_fit(self.initial_b_guess, self.initial_d_guess);
+                }
+            }
+        }); 
+
+        ui.label("Parameters:");
+
+        // Display fit parameters
+        if let Some(exp_fitter) = &self.exp_fitter {
+            if let Some(fit_params) = &exp_fitter.fit_params {
+                for ((a, a_uncertainty), (b, b_uncertainty)) in fit_params.iter() {
+                    ui.label(format!(
+                        "{:.1e} ± {:.1e}",
+                        a, a_uncertainty
+                    ));
+
+                    ui.label(format!(
+                        "{:.1e} ± {:.1e}",
+                        b, b_uncertainty
+                    ));
+                }
+            }
+        }
+
     }
 }

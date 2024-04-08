@@ -1,6 +1,9 @@
+
 use super::detector::Detector;
-use super::exp_fitter::ExpFitter;
+use super::exp_fitter::Fitter;
 use super::gamma_source::GammaSource;
+
+use std::collections::{HashMap, HashSet};
 
 use eframe::egui::{self, Color32};
 use egui_plot::{Legend, Line, MarkerShape, Plot, PlotPoints, Points};
@@ -62,17 +65,54 @@ impl Measurement {
 #[derive(Default, Clone, serde::Deserialize, serde::Serialize)]
 pub struct MeasurementHandler {
     pub measurements: Vec<Measurement>,
-    pub measurement_exp_fits: Vec<ExpFitter>,
+    pub measurement_exp_fits: HashMap<String, Fitter>
 }
 
 impl MeasurementHandler {
     pub fn new() -> Self {
         Self {
             measurements: vec![],
-            measurement_exp_fits: vec![],
+            measurement_exp_fits: HashMap::new(),
         }
     }
 
+    fn synchronize_detectors(&mut self) {
+        let mut detector_names: HashSet<String> = HashSet::new();
+        let mut detector_data: HashMap<String, (Vec<f64>, Vec<f64>, Vec<f64>)> = HashMap::new();
+    
+        // Collect all detector names from measurements and compute data
+        for measurement in &self.measurements {
+            for detector in &measurement.detectors {
+                let name = &detector.name;
+                detector_names.insert(name.clone());
+                let data = self.get_detector_data_from_measurements(name.clone());
+                detector_data.insert(name.clone(), data);
+            }
+        }
+    
+        // Iterate over detector names
+        for name in &detector_names {
+            // Insert if not exists
+            self.measurement_exp_fits.entry(name.clone()).or_insert_with(|| Fitter::default());
+    
+            // Update Fitter with pre-computed data
+            if let Some(fitter) = self.measurement_exp_fits.get_mut(name) {
+                if let Some(data) = detector_data.get(name) {
+                    fitter.name = name.clone();
+                    fitter.data = data.clone();
+                }
+            }
+        }
+    
+        // Remove entries in the hashmap that don't correspond to any detector in measurements
+        let keys: HashSet<String> = self.measurement_exp_fits.keys().cloned().collect();
+        for key in keys {
+            if !detector_names.contains(&key) {
+                self.measurement_exp_fits.remove(&key);
+            }
+        }
+    }
+    
     fn get_detector_data_from_measurements(&self, name: String) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
         let mut x_data: Vec<f64> = vec![];
         let mut y_data: Vec<f64> = vec![];
@@ -94,48 +134,43 @@ impl MeasurementHandler {
     }
 
     fn fit_detectors_ui(&mut self, ui: &mut egui::Ui) {
-        let mut detector_names: Vec<String> = vec![];
-        for measurement in &self.measurements {
-            for detector in &measurement.detectors {
-                if !detector_names.contains(&detector.name) {
-                    detector_names.push(detector.name.clone());
-                }
-            }
-        }
-        egui::Grid::new("detector_grid")
-            .striped(true)
-            .show(ui, |ui| {
-                ui.label("Detector Name");
-                ui.label("Exponential Fitter");
-                ui.end_row();
+        
+        self.synchronize_detectors(); // Ensure synchronization before fitting UI
 
-                for (index, detector) in detector_names.iter().enumerate() {
-                    ui.label(detector.clone());
+        ui.label("Fit Equation: y = a * exp[-x/b] + c * exp[-x/d]");
 
-                    
-                    ui.horizontal(|ui| {
-                        if ui.button("Single").clicked() {
-                            let (x_data, y_data, weights) =
-                                self.get_detector_data_from_measurements(detector.clone());
-                            let mut exp_fitter = ExpFitter::new(x_data, y_data, weights);
-                            exp_fitter.single_exp_fit();
+        egui::ScrollArea::both().show(ui, |ui| {
+            
+            ui.separator();
 
-                            self.measurement_exp_fits.push(exp_fitter);
-                        }
+            egui::Grid::new("detector_grid")
+                .striped(true)
+                .show(ui, |ui| {
 
-                        if ui.button("Double").clicked() {
-                            let (x_data, y_data, weights) =
-                                self.get_detector_data_from_measurements(detector.clone());
-                            let mut exp_fitter = ExpFitter::new(x_data, y_data, weights);
-                            exp_fitter.double_exp_fit();
+                    ui.label("Detector Name");
 
-                            self.measurement_exp_fits.push(exp_fitter);
-                        }
-                    });
-                    
+                    ui.label("Initial Guesses");
+
+                    ui.label("Exponential Fitter");
+
+                    ui.label("Results");
+                    ui.label("a");
+                    ui.label("b");
+                    ui.label("c");
+                    ui.label("d");
+
                     ui.end_row();
-                }
+
+                    for (name, fitter) in &mut self.measurement_exp_fits {
+                        fitter.name = name.clone();
+                        fitter.ui(ui);
+                        ui.end_row();
+                    }
+
             });
+
+        });
+
     }
 
     fn remove_measurement(&mut self, index: usize) {
@@ -213,17 +248,22 @@ impl MeasurementHandler {
                         plot_ui.line(y_err_points);
                     }
 
-                    // check to see if exp_fit in detector is some and then call the draw line function
-                    if let Some(exp_fit) = &mut detector.exp_fit {
-                        exp_fit.draw_fit_line(plot_ui, color);
-                    }
+                    // // check to see if exp_fit in detector is some and then call the draw line function
+                    // if let Some(exp_fit) = &mut detector.exp_fit {
+                    //     let name = 
+                    //     exp_fit.draw_fit_line(plot_ui, color);
+                    // }
                 }
             }
 
-            for (index, exp_fitter) in &mut self.measurement_exp_fits.iter().enumerate() {
-                let color = colors[index % colors.len()];
-                exp_fitter.draw_fit_line(plot_ui, color);
+            for (index, (name, fitter)) in self.measurement_exp_fits.iter_mut().enumerate() {
+                // check to see if the exp is not none
+                if let Some(exp_fit) = &mut fitter.exp_fitter {
+                    let color = colors[index % colors.len()];
+                    exp_fit.draw_fit_line(plot_ui, color, name.clone());
+                }
             }
+
         });
     }
 
@@ -260,4 +300,5 @@ impl MeasurementHandler {
             });
         });
     }
+
 }
