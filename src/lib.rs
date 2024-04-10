@@ -4,9 +4,6 @@
 mod app;
 pub use app::TemplateApp; 
 
-mod sps_runtime_estimator;
-mod cebra_efficiency;
-
 #[cfg(not(target_arch = "wasm32"))]
 mod sps_plot;
 
