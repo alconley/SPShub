@@ -10,3 +10,6 @@
 [submodule "src/sps_plot"]
 	path = src/sps_plot
 	url = https://github.com/alconley/sps_plot
+[submodule "src/sps_runtime_estimator"]
+	path = src/sps_runtime_estimator
+	url = https://github.com/alconley/sps_runtime_estimator
