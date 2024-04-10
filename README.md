@@ -2,8 +2,12 @@
 
 First, you'll need to install the Rust toolchain (compiler, cargo, etc). Go to the [Rust website](https://www.rust-lang.org/tools/install) and follow the instructions there.
 
-### Testing locally
+Then clone the respository recursively
 
+`git clone --recursive https://github.com/alconley/SPShub.git`
+
+### Testing locally
+2
 Make sure you are using the latest version of stable rust by running `rustup update`.
 
 `cargo run --release`
@@ -45,11 +49,18 @@ You can test the app at <https://alconley.github.io/SPShub/>.
 
 ## Apps
 
+### Eventbuilders
 - [sps_eventbuilder](https://github.com/alconley/sps_eventbuilder)
 - [cebra_sps_eventbuilder](https://github.com/alconley/cebra_sps_eventbuilder)
 - [cebra_eventbuilder](https://github.com/alconley/cebra_eventbuilder)
+
+### SE-SPS Utilities
 - [sps_plot](https://github.com/alconley/sps_plot)
 - [sps_runtime_estimator](https://github.com/alconley/sps_runtime_estimator)
+
+### CeBrA Utilities
+
+### General
 
 ## Plotter
 

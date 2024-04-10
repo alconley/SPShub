@@ -20,6 +20,7 @@ sps_eventbuilder = { path = "src/sps_eventbuilder" }
 cebra_sps_eventbuilder = { path = "src/cebra_sps_eventbuilder" }
 cebra_eventbuilder = { path = "src/cebra_eventbuilder" }
 sps_plot = { path = "src/sps_plot" }
+sps_runtime_estimator = { path = "src/sps_runtime_estimator" }
 
 # CeBrA Efficiency app
 egui_extras = { version = "0.27.2", features = ["datepicker"]}

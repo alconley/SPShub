@@ -2,6 +2,7 @@ use sps_eventbuilder::EVBApp as SPSEvbApp;
 use cebra_sps_eventbuilder::EVBApp as SPSCeBrAEvbApp;
 use cebra_eventbuilder::EVBApp as CeBrAEvbApp;
 use sps_plot::SPSPlotApp;
+use sps_runtime_estimator::SPSRunTimeApp;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -19,12 +20,13 @@ pub struct TemplateApp {
 
     sps_plot_app: SPSPlotApp,
     sps_plot_app_visible: bool,
+    
+    sps_runtime_app: SPSRunTimeApp,
+    sps_runtime_app_visible: bool,
 
     // plotter_app: PlotterApp,
     // plotter_app_visible: bool,
 
-    // sps_runtime_app: SPSRunTimeApp,
-    // sps_runtime_app_visible: bool,
 }
 
 impl TemplateApp {
@@ -46,11 +48,11 @@ impl TemplateApp {
                 sps_plot_app: SPSPlotApp::new(cc, true),
                 sps_plot_app_visible: false,
 
+                sps_runtime_app: SPSRunTimeApp::new(cc, true),
+                sps_runtime_app_visible: false,
+
                 // plotter_app: PlotterApp::new(cc),
                 // plotter_app_visible: false,
-
-                // sps_runtime_app: SPSRunTimeApp::new(cc),
-                // sps_runtime_app_visible: false,
             };
 
             // Attempt to restore the app state from persistent storage, if available.
@@ -157,15 +159,15 @@ impl eframe::App for TemplateApp {
                         self.sps_plot_app_visible = !self.sps_plot_app_visible;
                     }
 
-                    // if ui
-                    //     .add_sized(
-                    //         [full_width, 0.0],
-                    //         egui::SelectableLabel::new(self.sps_runtime_app_visible, "Run Time Estimator"),
-                    //     )
-                    //     .clicked()
-                    // {
-                    //     self.sps_runtime_app_visible = !self.sps_runtime_app_visible;
-                    // }
+                    if ui
+                        .add_sized(
+                            [full_width, 0.0],
+                            egui::SelectableLabel::new(self.sps_runtime_app_visible, "Run Time Estimator"),
+                        )
+                        .clicked()
+                    {
+                        self.sps_runtime_app_visible = !self.sps_runtime_app_visible;
+                    }
 
                     ui.separator();
 
@@ -199,6 +201,10 @@ impl eframe::App for TemplateApp {
 
             if self.sps_plot_app_visible {
                 self.sps_plot_app.update(ctx, frame);
+            }
+
+            if self.sps_runtime_app_visible {
+                self.sps_runtime_app.update(ctx, frame);
             }
         });
     }

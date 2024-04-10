@@ -4078,6 +4078,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "sps_runtime_estimator"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "env_logger",
+ "log",
+ "serde",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "spshub"
 version = "0.1.0"
 dependencies = [
@@ -4102,6 +4114,7 @@ dependencies = [
  "serde_yaml",
  "sps_eventbuilder",
  "sps_plot",
+ "sps_runtime_estimator",
  "varpro",
  "wasm-bindgen-futures",
 ]
