@@ -17,7 +17,8 @@ eframe = { version = "0.27.2", default-features = false, features = [
 ] }
 log = "0.4"
 
-sps_eventbuilder = { path = "src/sps_eventbuilder"}
+sps_eventbuilder = { path = "src/sps_eventbuilder" }
+cebra_sps_eventbuilder = { path = "src/cebra_sps_eventbuilder" }
 
 # CeBrA Efficiency app
 egui_extras = { version = "0.27.2", features = ["datepicker"]}
