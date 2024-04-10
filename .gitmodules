@@ -4,3 +4,6 @@
 [submodule "src/cebra_sps_eventbuilder"]
 	path = src/cebra_sps_eventbuilder
 	url = https://github.com/alconley/cebra_sps_eventbuilder
+[submodule "src/cebra_eventbuilder"]
+	path = src/cebra_eventbuilder
+	url = https://github.com/alconley/cebra_eventbuilder
