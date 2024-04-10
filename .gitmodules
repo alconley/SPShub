@@ -1,0 +1,3 @@
+[submodule "src/sps_eventbuilder"]
+	path = src/sps_eventbuilder
+	url = https://github.com/alconley/sps_eventbuilder
