@@ -7,3 +7,6 @@
 [submodule "src/cebra_eventbuilder"]
 	path = src/cebra_eventbuilder
 	url = https://github.com/alconley/cebra_eventbuilder
+[submodule "src/sps_plot"]
+	path = src/sps_plot
+	url = https://github.com/alconley/sps_plot
