@@ -224,7 +224,6 @@ pub fn process_runs(
             run_archive_path: params.archive_dir.join(format!("run_{}.tar.gz", run)),
             unpack_dir_path: params.unpack_dir.clone(),
             output_file_path: params.output_dir.join(format!("run_{}.parquet", run)),
-            // scalerlist_file_path: params.scaler_list_filepath.clone(),
             scalerlist: params.scaler_list.clone(),
             scalerout_file_path: params.output_dir.join(format!("run_{}_scalers.txt", run)),
             nuc_map: &mass_map,

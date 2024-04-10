@@ -3,10 +3,11 @@
 use crate::{
     plotter::app::PlotterApp,
     sps_cebra_eventbuilder::app::EVBApp as SPSCeBrAEvbApp,
-    sps_eventbuilder::app::EVBApp as SPSEvbApp,
     cebra_eventbuilder::app::EVBApp as CeBrAEvbApp,
     sps_plot::app::SPSPlotApp,
 };
+
+use sps_eventbuilder::EVBApp as SPSEvbApp;
 
 use crate::sps_runtime_estimator::app::SPSRunTimeApp;
 use crate::cebra_efficiency::app::CeBrAEfficiencyApp;
@@ -20,7 +21,6 @@ pub struct TemplateApp {
     sps_cebra_evb_app: SPSCeBrAEvbApp,
     sps_cebra_evb_app_visible: bool,
 
-    #[cfg(not(target_arch = "wasm32"))]
     sps_evb_app: SPSEvbApp,
     sps_evb_app_visible: bool,
 
@@ -53,7 +53,7 @@ impl TemplateApp {
                 sps_cebra_evb_app: SPSCeBrAEvbApp::new(cc),
                 sps_cebra_evb_app_visible: false,
 
-                sps_evb_app: SPSEvbApp::new(cc),
+                sps_evb_app: SPSEvbApp::new(cc, true),
                 sps_evb_app_visible: false,
 
                 cebra_evb_app: CeBrAEvbApp::new(cc),
