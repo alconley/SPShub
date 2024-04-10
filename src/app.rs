@@ -2,13 +2,12 @@
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{
     plotter::app::PlotterApp,
-    // sps_cebra_eventbuilder::app::EVBApp as SPSCeBrAEvbApp,
-    // cebra_eventbuilder::app::EVBApp as CeBrAEvbApp,
     sps_plot::app::SPSPlotApp,
 };
 
 use sps_eventbuilder::EVBApp as SPSEvbApp;
 use cebra_sps_eventbuilder::EVBApp as SPSCeBrAEvbApp;
+use cebra_eventbuilder::EVBApp as CeBrAEvbApp;
 
 use crate::sps_runtime_estimator::app::SPSRunTimeApp;
 use crate::cebra_efficiency::app::CeBrAEfficiencyApp;
@@ -23,6 +22,9 @@ pub struct TemplateApp {
 
     sps_evb_app: SPSEvbApp,
     sps_evb_app_visible: bool,
+
+    cebra_evb_app: CeBrAEvbApp,
+    cebra_evb_app_visible: bool,
 
     #[cfg(not(target_arch = "wasm32"))]
     sps_plot_app: SPSPlotApp,
@@ -51,6 +53,9 @@ impl TemplateApp {
 
                 sps_evb_app: SPSEvbApp::new(cc, true),
                 sps_evb_app_visible: false,
+
+                cebra_evb_app: CeBrAEvbApp::new(cc, true),
+                cebra_evb_app_visible: false,
 
                 sps_plot_app: SPSPlotApp::new(cc),
                 sps_plot_app_visible: false,
@@ -133,15 +138,15 @@ impl eframe::App for TemplateApp {
                         self.sps_evb_app_visible = !self.sps_evb_app_visible;
                     }
 
-                    // if ui
-                    //     .add_sized(
-                    //         [full_width, 0.0],
-                    //         egui::SelectableLabel::new(self.cebra_evb_app_visible, "CeBrA"),
-                    //     )
-                    //     .clicked()
-                    // {
-                    //     self.cebra_evb_app_visible = !self.cebra_evb_app_visible;
-                    // }
+                    if ui
+                        .add_sized(
+                            [full_width, 0.0],
+                            egui::SelectableLabel::new(self.cebra_evb_app_visible, "CeBrA"),
+                        )
+                        .clicked()
+                    {
+                        self.cebra_evb_app_visible = !self.cebra_evb_app_visible;
+                    }
 
                     if ui
                         .add_sized(
@@ -223,21 +228,16 @@ impl eframe::App for TemplateApp {
             // conditional statement to differentiate between web and non-web targets.
             if cfg!(target_arch = "wasm32") {
 
-                // if self.cebra_evb_app_visible {
-                //     // Instructions for web users, as event builders are not available.
-                //     egui::Window::new("CeBrA Eventbuilder").show(ctx, |ui| {
-                //         ui.label("Event builders are only available when compiling locally.");
-                //         ui.label("Download: 'git clone https://github.com/alconley/SPShub.git'");
-                //         ui.label("Run: 'cargo run --release'");
-                //     });
-                // }
-
                 if self.sps_evb_app_visible {
                     self.sps_evb_app.update(ctx, frame);
                 }
 
                 if self.sps_cebra_evb_app_visible {
                     self.sps_cebra_evb_app.update(ctx, frame);
+                }
+
+                if self.cebra_evb_app_visible {
+                    self.cebra_evb_app.update(ctx, frame);
                 }
 
                 if self.sps_plot_app_visible {
@@ -268,12 +268,12 @@ impl eframe::App for TemplateApp {
                         self.sps_evb_app.update(ctx, frame);
                     }
 
-                    // if self.cebra_evb_app_visible {
-                    //     self.cebra_evb_app.update(ctx, frame);
-                    // }
-
                     if self.sps_cebra_evb_app_visible {
                         self.sps_cebra_evb_app.update(ctx, frame);
+                    }
+
+                    if self.cebra_evb_app_visible {
+                        self.cebra_evb_app.update(ctx, frame);
                     }
 
                     if self.sps_plot_app_visible {
