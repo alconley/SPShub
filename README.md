@@ -49,12 +49,6 @@ You can test the app at <https://alconley.github.io/SPShub/>.
 - [cebra_sps_eventbuilder](https://github.com/alconley/cebra_sps_eventbuilder)
 - [cebra_eventbuilder](https://github.com/alconley/cebra_eventbuilder)
 
-## SPS Plot
-
-This tool is intended to be used for guiding the settings of the SPS to show specific states on the focal plane detector. The user gives the program reaction information, and the program runs through the kinematics to calculate the energies of ejecta into the the SESPS. To evaluate different states, the program scrapes a list of levels from NNDC, and these levels are then passed on to the reaction handler. These levels are then shown on the screen with labels. The labels can be modified to show either the excitation energy of the state, the kinetic energy of the ejectile, or the focal plane z-offset for a state. Note that since levels are obtained from NNDC, SPSPlot requires an internet connection.
-
-This tool is a simplier version of a tool located in [SPSPy](https://github.com/gwm17/spspy) and written in rust.
-
 ## Plotter
 
 This tool is designed to plot 1d and 2d histograms from .parquet files. The user can make graphical 2d cuts to filter the dataframe. More to come in the future (gaussian fitting, projections, exporting histogram data for python analysis)

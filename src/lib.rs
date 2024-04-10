@@ -4,10 +4,7 @@
 mod app;
 pub use app::TemplateApp; 
 
-#[cfg(not(target_arch = "wasm32"))]
-mod sps_plot;
-
-#[cfg(not(target_arch = "wasm32"))]
-mod plotter;
+// #[cfg(not(target_arch = "wasm32"))]
+// mod plotter;
 
 
