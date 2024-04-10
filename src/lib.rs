@@ -3,8 +3,3 @@
 
 mod app;
 pub use app::TemplateApp; 
-
-// #[cfg(not(target_arch = "wasm32"))]
-// mod plotter;
-
-

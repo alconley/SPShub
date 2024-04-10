@@ -1,6 +1,7 @@
 use sps_eventbuilder::EVBApp as SPSEvbApp;
 use cebra_sps_eventbuilder::EVBApp as SPSCeBrAEvbApp;
 use cebra_eventbuilder::EVBApp as CeBrAEvbApp;
+use sps_plot::SPSPlotApp;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -16,8 +17,8 @@ pub struct TemplateApp {
     cebra_evb_app: CeBrAEvbApp,
     cebra_evb_app_visible: bool,
 
-    // sps_plot_app: SPSPlotApp,
-    // sps_plot_app_visible: bool,
+    sps_plot_app: SPSPlotApp,
+    sps_plot_app_visible: bool,
 
     // plotter_app: PlotterApp,
     // plotter_app_visible: bool,
@@ -42,8 +43,8 @@ impl TemplateApp {
                 cebra_evb_app: CeBrAEvbApp::new(cc, true),
                 cebra_evb_app_visible: false,
 
-                // sps_plot_app: SPSPlotApp::new(cc),
-                // sps_plot_app_visible: false,
+                sps_plot_app: SPSPlotApp::new(cc, true),
+                sps_plot_app_visible: false,
 
                 // plotter_app: PlotterApp::new(cc),
                 // plotter_app_visible: false,
@@ -146,15 +147,15 @@ impl eframe::App for TemplateApp {
 
                     ui.heading("SE-SPS Utilities");
 
-                    // if ui
-                    //     .add_sized(
-                    //         [full_width, 0.0],
-                    //         egui::SelectableLabel::new(self.sps_plot_app_visible, "SPS Plot"),
-                    //     )
-                    //     .clicked()
-                    // {
-                    //     self.sps_plot_app_visible = !self.sps_plot_app_visible;
-                    // }
+                    if ui
+                        .add_sized(
+                            [full_width, 0.0],
+                            egui::SelectableLabel::new(self.sps_plot_app_visible, "SPS Plot"),
+                        )
+                        .clicked()
+                    {
+                        self.sps_plot_app_visible = !self.sps_plot_app_visible;
+                    }
 
                     // if ui
                     //     .add_sized(
@@ -194,6 +195,10 @@ impl eframe::App for TemplateApp {
 
             if self.cebra_evb_app_visible {
                 self.cebra_evb_app.update(ctx, frame);
+            }
+
+            if self.sps_plot_app_visible {
+                self.sps_plot_app.update(ctx, frame);
             }
         });
     }

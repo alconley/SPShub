@@ -48,6 +48,8 @@ You can test the app at <https://alconley.github.io/SPShub/>.
 - [sps_eventbuilder](https://github.com/alconley/sps_eventbuilder)
 - [cebra_sps_eventbuilder](https://github.com/alconley/cebra_sps_eventbuilder)
 - [cebra_eventbuilder](https://github.com/alconley/cebra_eventbuilder)
+- [sps_plot](https://github.com/alconley/sps_plot)
+- [sps_runtime_estimator](https://github.com/alconley/sps_runtime_estimator)
 
 ## Plotter
 
