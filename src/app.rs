@@ -8,7 +8,7 @@ use sps_runtime_estimator::SPSRunTimeApp;
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 #[derive(Default)]
-pub struct TemplateApp {
+pub struct SPSHubApp {
     sps_cebra_evb_app: SPSCeBrAEvbApp,
     sps_cebra_evb_app_visible: bool,
 
@@ -29,7 +29,7 @@ pub struct TemplateApp {
 
 }
 
-impl TemplateApp {
+impl SPSHubApp {
     /// Called once before the first frame.
     /// Creates a new instance of the application, possibly restoring from previous state.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
@@ -71,7 +71,7 @@ impl TemplateApp {
     }
 }
 
-impl eframe::App for TemplateApp {
+impl eframe::App for SPSHubApp {
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
