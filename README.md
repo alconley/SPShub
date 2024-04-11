@@ -59,9 +59,8 @@ You can test the app at <https://alconley.github.io/SPShub/>.
 - [sps_runtime_estimator](https://github.com/alconley/sps_runtime_estimator)
 
 ### CeBrA Utilities
+- [cebra_efficiency](https://github.com/alconley/cebra_efficiency)
 
 ### General
 
-## Plotter
-
-This tool is designed to plot 1d and 2d histograms from .parquet files. The user can make graphical 2d cuts to filter the dataframe. More to come in the future (gaussian fitting, projections, exporting histogram data for python analysis)
+- [muc](https://github.com/alconley/muc)
