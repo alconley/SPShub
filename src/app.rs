@@ -3,6 +3,7 @@ use cebra_sps_eventbuilder::EVBApp as SPSCeBrAEvbApp;
 use cebra_eventbuilder::EVBApp as CeBrAEvbApp;
 use sps_plot::SPSPlotApp;
 use sps_runtime_estimator::SPSRunTimeApp;
+use cebra_efficiency::CeBrAEfficiencyApp;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -23,6 +24,9 @@ pub struct SPSHubApp {
     
     sps_runtime_app: SPSRunTimeApp,
     sps_runtime_app_visible: bool,
+
+    cebra_efficiency_app: CeBrAEfficiencyApp,
+    cebra_efficiency_app_visible: bool,
 
     // plotter_app: PlotterApp,
     // plotter_app_visible: bool,
@@ -50,6 +54,9 @@ impl SPSHubApp {
 
                 sps_runtime_app: SPSRunTimeApp::new(cc, true),
                 sps_runtime_app_visible: false,
+
+                cebra_efficiency_app: CeBrAEfficiencyApp::new(cc, true),
+                cebra_efficiency_app_visible: false,
 
                 // plotter_app: PlotterApp::new(cc),
                 // plotter_app_visible: false,
@@ -171,6 +178,16 @@ impl eframe::App for SPSHubApp {
 
                     ui.heading("CeBrA Utilities");
 
+                    if ui
+                        .add_sized(
+                            [full_width, 0.0],
+                            egui::SelectableLabel::new(self.cebra_efficiency_app_visible, "Efficiency"),
+                        )
+                        .clicked()
+                    {
+                        self.cebra_efficiency_app_visible = !self.cebra_efficiency_app_visible;
+                    }
+
                     ui.separator();
 
                     ui.heading("General");
@@ -203,6 +220,10 @@ impl eframe::App for SPSHubApp {
 
             if self.sps_runtime_app_visible {
                 self.sps_runtime_app.update(ctx, frame);
+            }
+
+            if self.cebra_efficiency_app_visible {
+                self.cebra_efficiency_app.update(ctx, frame);
             }
         });
     }

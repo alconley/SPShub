@@ -20,6 +20,7 @@ cebra_sps_eventbuilder = { path = "src/cebra_sps_eventbuilder" }
 cebra_eventbuilder = { path = "src/cebra_eventbuilder" }
 sps_plot = { path = "src/sps_plot" }
 sps_runtime_estimator = { path = "src/sps_runtime_estimator" }
+cebra_efficiency = { path = "src/cebra_efficiency" }
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
