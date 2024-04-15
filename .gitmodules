@@ -13,3 +13,6 @@
 [submodule "src/sps_runtime_estimator"]
 	path = src/sps_runtime_estimator
 	url = https://github.com/alconley/sps_runtime_estimator
+[submodule "src/cebra_efficiency"]
+	path = src/cebra_efficiency
+	url = https://github.com/alconley/cebra_efficiency.git
