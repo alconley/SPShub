@@ -62,12 +62,12 @@ impl SPSHubApp {
                 // plotter_app_visible: false,
             };
 
-            // Attempt to restore the app state from persistent storage, if available.
-            if let Some(storage) = cc.storage {
-                if let Some(state) = eframe::get_value::<Self>(storage, eframe::APP_KEY) {
-                    return state; // Return the restored state.
-                }
-            }
+            // // Attempt to restore the app state from persistent storage, if available.
+            // if let Some(storage) = cc.storage {
+            //     if let Some(state) = eframe::get_value::<Self>(storage, eframe::APP_KEY) {
+            //         return state; // Return the restored state.
+            //     }
+            // }
 
             app // Return the newly initialized app.
         }

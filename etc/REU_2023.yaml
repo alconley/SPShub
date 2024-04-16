@@ -31177,4 +31177,4 @@ measurment_handler:
         - 255
       initial_b_guess: 400.0
       initial_d_guess: 3000.0
-window: false
+window: true
